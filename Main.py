@@ -166,20 +166,15 @@ for file in list_of_files:
 
     ########################################################################################################################
 
-    import pandas as pd
-    from ValidationRules import ValidationRules
+    # TODO: IMPORTS FIRST
     from Preprocess import Preprocess
     from Reports import Reports
     import tableChecks
-
-
-    # TODO: IMPORTS FIRST
 
     outputFile = 'Validation_{0}.xlsx'.format(pdfFileName)
     excelHandler.creatWorkBook(outputFile)
     excelHandlerForOutput = ExcelHandler(fileName=outputFile)
 
-    rules = ValidationRules()
 
     # GET TABLES FROM DB INTO PANDAS DATAFRAME
     df_input = db.tamaraPandas(selctedTable=db.relational_db)
