@@ -49,7 +49,7 @@ class ValidationRules:
             return abs(prev - input) == freq
 
     def check_dict(self,input,col_name,lookup):
-       if str(input).strip().upper() in [row['DESCRIPTION'].strip().upper() for col, row in lookup.iterrows() if row['CL_ID'] == col_name]:
+       if any([str(input).strip().upper().__contains__(i) for i in [row['DESCRIPTION'].strip().upper() for col, row in lookup.iterrows() if row['CL_ID'] == col_name]]):
            return True
        else:
            return False
