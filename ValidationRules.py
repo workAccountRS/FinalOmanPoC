@@ -36,9 +36,9 @@ class ValidationRules:
 
         for i in input:
             if isinstance(i, str):
-                if i in alphabet:
-                    return True
-
+                for j in alphabet:
+                    if j in i:
+                        return True
         return False
 
     def freq(self,input, prev=None, freq=None):
