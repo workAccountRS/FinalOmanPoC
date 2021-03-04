@@ -36,9 +36,9 @@ class ValidationRules:
 
         for i in input:
             if isinstance(i, str):
-                if i in alphabet:
-                    return True
-
+                for j in alphabet:
+                    if j in i:
+                        return True
         return False
 
     def freq(self,input, prev=None, freq=None):
@@ -49,7 +49,7 @@ class ValidationRules:
             return abs(prev - input) == freq
 
     def check_dict(self,input,col_name,lookup):
-       if str(input).strip().upper() in [row['DESCRIPTION'].strip().upper() for col, row in lookup.iterrows() if row['CL_ID'] == col_name]:
+       if any([str(input).strip().upper().__contains__(i) for i in [row['DESCRIPTION'].strip().upper() for col, row in lookup.iterrows() if row['CL_ID'] == col_name]]):
            return True
        else:
            return False
