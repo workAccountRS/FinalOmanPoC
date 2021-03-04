@@ -4,6 +4,9 @@ import pandas as pd
 class Reports:
     def __init__(self,table):
         self.table = table
+
+        self.CL_list = []
+        self.commonColumns = []
     
     def minmax(self):
         temp_list = [self.table.Obs_toNumber.idxmin(), self.table.Obs_toNumber.idxmax()]
