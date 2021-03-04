@@ -141,13 +141,15 @@ for file in list_of_files:
     from Reports import Reports
     import tableChecks
 
-    outputFile = 'Validation_{0}.xlsx'.format(pdfFileName)
+    formattedTime = str(currentTime).replace('/', '-').replace(':', '').replace(' ', '_')
+    outputFile = 'Validation_{0}_{1}.xlsx'.format(pdfFileName, formattedTime)
     excelHandler.creatWorkBook(outputFile)
     excelHandlerForOutput = ExcelHandler(fileName=outputFile)
 
     # GET TABLES FROM DB INTO PANDAS DATAFRAME
-    df_input = db.tamaraPandas(selctedTable=db.relational_db)
-    ref_dict = db.tamaraPandas(selctedTable=db.ref_dictionary)
+    #df_test = db.getTableToDF(selctedTable=db.relational_db)
+    df_input, df_old = db.relationalDF(selctedTable=db.relational_db, time_stamp=currentTime)
+    ref_dict = db.getTableToDF(selctedTable=db.ref_dictionary)
 
     tableRules = tableChecks.Table(df_input, ref_dict)
     df_pass, df_fail = tableRules.getPassFail()

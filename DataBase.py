@@ -113,21 +113,20 @@ class DB:
         for column, value in zip(columns, values):
             columnsSQL += """{0} {1}
                           """.format(column, ',' if not column == columns[-1] else '')
+            value = 'NULL' if value is None else value
             valuesSQL += """'{0}' {1}
                                      """.format(value, ',' if not value == values[-1] else '')
-
+        valuesSQL = valuesSQL.replace("'NULL'", "NULL")
         sql = """INSERT INTO {0} ({1})
-                values ({2})""".format(tableName,columnsSQL,valuesSQL)
+                values ({2})""".format(tableName, columnsSQL, valuesSQL)
         print(':::::', sql)
         cursor = self.connection.cursor()
         try:
             cursor.execute(sql)
             self.connection.commit()
         except Exception as e:
-                print(e)
-                return
-
-
+            print(e)
+            return
 
     def insertIntoLandingDB(self, sheetSource='', cellSource='', cellContent='', TimeStamp='', BatchID=''):
 
@@ -135,13 +134,10 @@ class DB:
         values ('{0}','{1}','{2}','{3}','{4}' )""".format(sheetSource, cellSource, cellContent,
                                                           TimeStamp, BatchID, self.landing_db)
 
-
         print(':::::', sql)
         cursor = self.connection.cursor()
         cursor.execute(sql)
         self.connection.commit()
-
-
 
     def printRelationalDB(self):
         db = cx_Oracle.connect('{0}/{1}@{2}:{3}/{4}'.format(config.username,
@@ -192,10 +188,18 @@ class DB:
         for record in cursor:
             print('ref_dictionary', record)
 
-    def tamaraPandas(self, selctedTable):
+    def getTableToDF(self, selctedTable):
         SQL = """SELECT * FROM {0}""".format(selctedTable)
         df_input = pd.read_sql(SQL, con=self.connection)
         return df_input
+
+    def relationalDF(self, selctedTable, time_stamp):
+        SQL = """select * from {0} where time_stamp in (select *  from ( select distinct time_stamp from 
+        relational_db_M1 order by time_stamp desc ) where ROWNUM <3)""".format(selctedTable)
+        df_all = pd.read_sql(SQL, con=self.connection)
+        df_new = df_all[df_all.TIME_STAMP == time_stamp].reset_index(drop=True)
+        df_old = df_all[df_all.TIME_STAMP != time_stamp].reset_index(drop=True)
+        return df_new, df_old
 
     def closeConnection(self):
         # release the connection
