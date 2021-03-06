@@ -147,23 +147,22 @@ for file in list_of_files:
     excelHandlerForOutput = ExcelHandler(fileName=outputFile)
 
     # GET TABLES FROM DB INTO PANDAS DATAFRAME
-    #df_test = db.getTableToDF(selctedTable=db.relational_db)
     df_input, df_old = db.relationalDF(selctedTable=db.relational_db, time_stamp=currentTime)
     ref_dict = db.getTableToDF(selctedTable=db.ref_dictionary)
 
-    tableRules = tableChecks.Table(df_input, ref_dict)
+    # PREPROCESS DATA
+    a = Preprocess(df_input)
+    input = a.getPrepTable()
+
+    tableRules = tableChecks.Table(input, ref_dict)
     df_pass, df_fail = tableRules.getPassFail()
 
     # OUTPUT GOOD AND BAD ROWS
     excelHandlerForOutput.saveDFtoExcel('fail', df_fail)
     excelHandlerForOutput.saveDFtoExcel('pass', df_pass)
 
-    # PREPROCESS DATA
-    a = Preprocess(df_input)
-    input = a.table1()
-
     # GET MIN MAX
-    b = Reports(input)
+    b = Reports(input,None)
     min_max = b.minmax()
     excelHandlerForOutput.saveDFtoExcel('min_max', min_max)
 
@@ -174,10 +173,14 @@ for file in list_of_files:
     # FREQ CHECK
     freq = b.frequency()
     excelHandlerForOutput.saveDFtoExcel('frequency', freq)
+    #
+    # # GET TOTALS REPORT
+    # total = b.totals()
+    # excelHandlerForOutput.saveDFtoExcel('total', total)
 
-    # GET TOTALS REPORT
-    total = b.totals()
-    excelHandlerForOutput.saveDFtoExcel('total', total)
+    # PRED DISCREPANCIES CHECK
+    PredDisc = b.getPredDiscrepancies(df_old)
+    excelHandlerForOutput.saveDFtoExcel('predecessor discrepancies', PredDisc)
 
     excelHandlerForOutput.closeWriter()
     db.closeConnection()
