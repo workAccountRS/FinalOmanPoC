@@ -26,19 +26,21 @@ class ValidationRules:
             except ValueError:
                 return False
 
-    def lang(self,input,lang='ar'):
-        if lang == 'ar':
-            alphabet = ['ا', 'ب', 'ي', 'و', 'ه', 'ن', 'م', 'ل', 'ك', 'ق', 'ف', 'غ', 'ع', 'ظ', 'ط', 'ض', 'ص',
-                        'ش', 'س','ز', 'ر', 'ذ', 'د', 'خ', 'ح', 'ج', 'ث', 'ت']
-        elif lang == 'en':
-            alphabet = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q',
-                        'r', 's','t', 'u', 'v', 'w', 's', 'y', 'z']
+    def lang(self, input, lang='ar'):
+        if input is not None:
+            input = str(input)
+            if lang == 'ar':
+                alphabet = ['ا', 'ب', 'ي', 'و', 'ه', 'ن', 'م', 'ل', 'ك', 'ق', 'ف', 'غ', 'ع', 'ظ', 'ط', 'ض', 'ص',
+                            'ش', 'س','ز', 'ر', 'ذ', 'د', 'خ', 'ح', 'ج', 'ث', 'ت']
+            elif lang == 'en':
+                alphabet = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q',
+                            'r', 's','t', 'u', 'v', 'w', 's', 'y', 'z']
 
-        for i in input:
-            if isinstance(i, str):
-                for j in alphabet:
-                    if j in i:
-                        return True
+            for i in input:
+                if isinstance(i, str):
+                    for j in alphabet:
+                        if j in i:
+                            return True
         return False
 
     def freq(self,input, prev=None, freq=None):
