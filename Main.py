@@ -153,6 +153,7 @@ for file in list_of_files:
     # GET TABLES FROM DB INTO PANDAS DATAFRAME
     df_input, df_old = db.relationalDF(selctedTable=db.relational_db, time_stamp=currentTime)
     ref_dict = db.getTableToDF(selctedTable=db.ref_dictionary)
+    print(df_input)
 
     # PREPROCESS DATA
     a = Preprocess(df_input)
@@ -160,13 +161,14 @@ for file in list_of_files:
 
     tableRules = tableChecks.Table(input, ref_dict)
     df_pass, df_fail = tableRules.getPassFail()
+    print(df_fail.columns)
 
     # OUTPUT GOOD AND BAD ROWS
     excelHandlerForOutput.saveDFtoExcel('fail', df_fail)
     excelHandlerForOutput.saveDFtoExcel('pass', df_pass)
 
     # GET MIN MAX
-    b = Reports(input,None)
+    b = Reports(input,'CL_AGE_GROUP_EN_V1')
     min_max = b.minmax()
     excelHandlerForOutput.saveDFtoExcel('min_max', min_max)
 

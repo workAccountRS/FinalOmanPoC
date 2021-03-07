@@ -11,11 +11,6 @@ class Table:
 
         self.freq = self.table['FREQUENCY'][self.table.FREQUENCY.first_valid_index()].upper()
         self.columns = self.table.columns
-        self.preprocessed = ['PERIOD_Y', 'PERIOD_DATE', 'PUB_DATE_AR', 'PUB_DATE_EN', 'Obs_toNumber']
-
-        # MONTHLY PERIOD WILL ONLY BE CHECKED IF FREQUENCY IS NOT YEARLY
-        if not self.freq.upper().__contains__('YEAR'):
-            self.preprocessed.append('PERIOD_M')
 
         self.optionalColumns = ['NOTE1_AR', 'NOTE2_AR', 'NOTE3_AR', 'NOTE1_EN', 'NOTE2_EN', 'NOTE3_EN',
                                 'UNIT_EN', 'UNIT_AR', 'MULTIPLIER_EN', 'MULTIPLIER_AR']
@@ -87,4 +82,10 @@ class Table:
                 df_fail = df_fail.append(pd.DataFrame([inrow], columns=df_fail.columns), ignore_index=True)
             else:
                 df_pass = df_pass.append(pd.DataFrame([[*row.values]], columns=df_pass.columns), ignore_index=True)
-        return df_pass, df_fail
+
+        return_cols_fail = [i for i in df_fail.columns if not i.upper().__contains__('_P')]
+        print('fail', return_cols_fail)
+        return_cols_pass = [i for i in df_pass.columns if not i.upper().__contains__('_P')]
+        print('pass', return_cols_pass)
+
+        return df_pass[return_cols_pass], df_fail[return_cols_fail]

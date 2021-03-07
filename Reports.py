@@ -1,8 +1,10 @@
+
+
 class Reports:
     def __init__(self, table, sum_by):
         self.table = table
         self.columns = self.table.columns
-        self.sum_by = 'CL_AGE_GROUP_EN_V1'#sum_by
+        self.sum_by = sum_by
         self.lookups = []
         self.values = 'OBS_VALUE_P'
         self.date = 'TIME_PERIOD_DATE_P'
@@ -22,8 +24,9 @@ class Reports:
 
     def changes(self):
         # GET DIFFERENCE AND PERCENTAGE DIFFERENCE
+        order_list = self.lookups + [self.date]
 
-        diff = self.table[self.group_list].sort_values(by=self.group_list).reset_index(drop=True)
+        diff = self.table[self.group_list].sort_values(by=order_list).reset_index(drop=True)
         diff = diff.assign(DIFFERENCE=None, PERCENT_DIFFERENCE=None)
         for i in range(len(diff) - 1):
             if diff[self.date][i + 1].month - diff[self.date][i].month == 1:
@@ -47,36 +50,25 @@ class Reports:
             freq.at[i + 1, 'FREQUENCY'] = freq[self.date][i + 1].month - freq[self.date][i].month
         return freq
 
-    def totals(self):
-        reported_totals = self.table[self.table['CL_AGE_GROUP_EN_V1'] == 'Total'].groupby(
-            ['TIME_PERIOD_Y', 'TIME_PERIOD_M', 'CL_SEX_EN_V2']).agg({"Obs_toNumber": "sum"})
+    def totals_new(self):
+        group_list = self.group_list
+        group_list.remove(self.sum_by)
+        group_list.remove(self.values)
 
-        actual_totals = self.table[self.table['CL_AGE_GROUP_EN_V1'] != 'Total'].groupby(
-            ['TIME_PERIOD_Y', 'TIME_PERIOD_M', 'CL_SEX_EN_V2']).agg({"Obs_toNumber": "sum"})
+        reported_totals = self.table[self.table[self.sum_by].str.upper() == 'TOTAL']\
+            .groupby(group_list).agg({self.values: "sum"})
 
-        totals = reported_totals.merge(actual_totals, on=['TIME_PERIOD_Y', 'TIME_PERIOD_M', 'CL_SEX_EN_V2'], how='right'
-                                       ).merge(reported_totals - actual_totals,
-                                               on=['TIME_PERIOD_Y', 'TIME_PERIOD_M', 'CL_SEX_EN_V2'], how='left')
+        print(reported_totals)
+
+        actual_totals = self.table[self.table[self.sum_by].str.upper() != 'TOTAL'].groupby(self.group_list)\
+                                                                                  .agg({self.values: "sum"})
+        print(actual_totals)
+
+        totals = reported_totals.merge(actual_totals, on=self.group_list, how='right'
+                                       ).merge(reported_totals - actual_totals, on=self.group_list, how='left')
 
         totals.columns = ['Reported Total', 'Actual Total', 'Reported-Actual']
         return totals
-
-    def totals_new(self):
-
-        self.group_list.remove(self.sum_by)
-        #.append(self.value_id)
-
-        reported_totals = self.table[self.table[self.sum_by] == 'TOTAL']\
-            .groupby(self.group_list).agg({self.values: "sum"})
-
-        actual_totals = self.table[self.table[self.sum_by] != 'TOTAL'].groupby(self.group_list)\
-                                                                                  .agg({self.values: "sum"})
-
-        # totals = reported_totals.merge(actual_totals, on=self.group_list, how='right'
-        #                                )#.merge(reported_totals - actual_totals, on=self.group_list, how='left')
-        #
-        # totals.columns = ['Reported Total', 'Actual Total', 'Reported-Actual']
-        return actual_totals
 
     def getPredDiscrepancies(self, old_table):
         joint_table = self.table[[*old_table.columns]].append(old_table, ignore_index = True)
