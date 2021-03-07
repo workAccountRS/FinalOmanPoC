@@ -173,10 +173,10 @@ for file in list_of_files:
     # FREQ CHECK
     freq = b.frequency()
     excelHandlerForOutput.saveDFtoExcel('frequency', freq)
-    #
-    # # GET TOTALS REPORT
-    # total = b.totals()
-    # excelHandlerForOutput.saveDFtoExcel('total', total)
+
+    # GET TOTALS REPORT
+    total = b.totals_new()
+    excelHandlerForOutput.saveDFtoExcel('total', total)
 
     # PRED DISCREPANCIES CHECK
     PredDisc = b.getPredDiscrepancies(df_old)

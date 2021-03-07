@@ -1,11 +1,8 @@
-import pandas as pd
-
-
 class Reports:
     def __init__(self, table, sum_by):
         self.table = table
         self.columns = self.table.columns
-        self.sum_by = sum_by
+        self.sum_by = 'CL_AGE_GROUP_EN_V1'#sum_by
         self.lookups = []
         self.values = 'OBS_VALUE_P'
         self.date = 'TIME_PERIOD_DATE_P'
@@ -14,7 +11,8 @@ class Reports:
 
         for i in self.columns:
             if i.upper().__contains__('CL'):
-                self.lookups.append(i)
+                if i.upper().__contains__('EN'):
+                    self.lookups.append(i)
         self.group_list = self.lookups + [self.values, self.date]
 
     def minmax(self):
@@ -64,18 +62,21 @@ class Reports:
         return totals
 
     def totals_new(self):
-        group_list = self.group_list.remove(self.sum_by)
 
-        reported_totals = self.table[self.table[self.value_name].upper() == 'TOTAL']#.groupby([self.value_id]).agg({self.values: "sum"})
+        self.group_list.remove(self.sum_by)
+        #.append(self.value_id)
 
-        actual_totals = self.table[self.table[self.value_name].upper() != 'TOTAL'].groupby([self.value_id])\
+        reported_totals = self.table[self.table[self.sum_by] == 'TOTAL']\
+            .groupby(self.group_list).agg({self.values: "sum"})
+
+        actual_totals = self.table[self.table[self.sum_by] != 'TOTAL'].groupby(self.group_list)\
                                                                                   .agg({self.values: "sum"})
 
-        totals = reported_totals.merge(actual_totals, on=group_list, how='right'
-                                       ).merge(reported_totals - actual_totals, on=group_list, how='left')
-
-        totals.columns = ['Reported Total', 'Actual Total', 'Reported-Actual']
-        return totals
+        # totals = reported_totals.merge(actual_totals, on=self.group_list, how='right'
+        #                                )#.merge(reported_totals - actual_totals, on=self.group_list, how='left')
+        #
+        # totals.columns = ['Reported Total', 'Actual Total', 'Reported-Actual']
+        return actual_totals
 
     def getPredDiscrepancies(self, old_table):
         joint_table = self.table[[*old_table.columns]].append(old_table, ignore_index = True)
