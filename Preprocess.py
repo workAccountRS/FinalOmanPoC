@@ -79,8 +79,6 @@ class Preprocess:
                     output.append(None)
             except:
                 output.append(None)
-
-        print(output)
         return output
 
     def getDate(self, month_list=None, year_list=[]):
