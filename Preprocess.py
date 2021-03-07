@@ -116,13 +116,15 @@ class Preprocess:
             self.table[i] = self.table[i].str.strip()
 
         input = self.table.assign(OBS_VALUE_P=self.getObsVal(self.table['OBS_VALUE']))
-        if not self.freq.__contains__('YEAR'):
+        if self.freq.__contains__('YEAR') or self.freq.__contains__('ANNUAL'):
+            input = input.assign(TIME_PERIOD_Y_P=self.getYear(input['TIME_PERIOD_Y']))
+            input = input.assign(TIME_PERIOD_DATE_P=self.getDate(year_list=input['TIME_PERIOD_Y_P']))
+        else:
             input = input.assign(TIME_PERIOD_M_P=self.getMonth(input['TIME_PERIOD_M']))
             input = input.assign(TIME_PERIOD_Y_P=self.getYear(input['TIME_PERIOD_Y']))
             input = input.assign(TIME_PERIOD_DATE_P=self.getDate(input['TIME_PERIOD_M_P'], input['TIME_PERIOD_Y_P']))
-        else:
-            input = input.assign(TIME_PERIOD_Y_P=self.getYear(input['TIME_PERIOD_Y']))
-            input = input.assign(TIME_PERIOD_DATE_P=self.getDate(input['TIME_PERIOD_Y_P']))
+
+        print(input[['TIME_PERIOD_Y_P','TIME_PERIOD_DATE_P']])
 
         input = input.assign(PUBLICATION_DATE_AR_P=
                              self.getDate(self.getMonth(input['PUBLICATION_DATE_AR']),

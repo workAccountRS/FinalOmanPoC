@@ -211,8 +211,8 @@ class DB:
         return df_input
 
     def relationalDF(self, selctedTable, time_stamp):
-        SQL = """select * from {0} where time_stamp in (select *  from ( select distinct time_stamp from 
-        {0} order by time_stamp desc ) where ROWNUM <3)""".format(selctedTable)
+        SQL = """select * from {0} where time_stamp in (select *  from ( select distinct time_stamp 
+        from {0} where time_stamp is not null order by time_stamp desc ) where ROWNUM <3)""".format(selctedTable)
         df_all = pd.read_sql(SQL, con=self.connection)
         df_new = df_all[df_all.TIME_STAMP == time_stamp].reset_index(drop=True)
         df_old = df_all[df_all.TIME_STAMP != time_stamp].reset_index(drop=True)

@@ -10,10 +10,15 @@ class Table:
         self.lookups = lookups
 
         self.freq = self.table['FREQUENCY'][self.table.FREQUENCY.first_valid_index()].upper()
-        self.columns = self.table.columns
+        self.columns = [*self.table.columns]
 
         self.optionalColumns = ['NOTE1_AR', 'NOTE2_AR', 'NOTE3_AR', 'NOTE1_EN', 'NOTE2_EN', 'NOTE3_EN',
                                 'UNIT_EN', 'UNIT_AR', 'MULTIPLIER_EN', 'MULTIPLIER_AR']
+
+        if self.freq.__contains__('YEAR') or self.freq.__contains__('ANNUAL'):
+            self.columns.remove('TIME_PERIOD_M')
+
+        print('columns', self.columns)
 
     def table_rules(self, row):
         output = {'isnull': [],

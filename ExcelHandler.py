@@ -81,8 +81,8 @@ class ExcelHandler:
 
     def creatWorkBook(self, filename):
         wb = Workbook()
-        sheets = {'ws1': 'pass', 'ws2': 'fail', 'ws3': 'min_max', 'ws4': 'changes',
-                  'ws5': 'frequency', 'ws6': 'total', 'ws7':'predecessor discrepancies'}
+        sheets = {'ws1': 'pass', 'ws2': 'fail', 'ws3': 'min_max','ws5': 'frequency',
+                  'ws4': 'changes', 'ws6': 'total', 'ws7':'predecessor discrepancies'}
 
         for key, value in sheets.items():
             key = wb.create_sheet()

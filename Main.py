@@ -40,7 +40,6 @@ for file in list_of_files:
 
     isFirstRun = not (db.getNumberOfRecords(tableName=db.s2t_mapping) > 0)
 
-
     lastRow = excelHandler.getMaxRow(sheet='Landing DB') + 1
 
     BatchID = Utilities.getBatchID()
@@ -66,7 +65,7 @@ for file in list_of_files:
             skipedRows.append(rowNumber)
             continue
 
-        if  isFirstRun:
+        if isFirstRun:
             db.insertDynamicTable(tableName=db.s2t_mapping, columns=s2tColumns, values=currentRowData)
 
         source_data = excelHandler.getCellFromSheet(sheet=sheet_source, cell=cell_source)
@@ -98,7 +97,8 @@ for file in list_of_files:
             # db.insertIntoLandingDB(sheetSource=sheet_source, cellSource=cell_source, cellContent=source_data,
             #                        TimeStamp=currentTime, BatchID=BatchID)
 
-            db.insertDynamicTable(tableName=db.landing_db, columns=landingDBColumns, values= [sheet_source,cell_source, source_data, currentTime , str(BatchID) ])
+            db.insertDynamicTable(tableName=db.landing_db, columns=landingDBColumns,
+                                  values=[sheet_source, cell_source, source_data, currentTime, str(BatchID)])
 
         # except Exception as e:
         #     print("ERROR IN ROW#" + str(rowNumber) + " -- " + str(e))
@@ -116,13 +116,12 @@ for file in list_of_files:
 
         currentRowData = excelHandler.getRowDataFromSheet(sheet='Relational DB', row=rowNumber)
 
-        db.insertDynamicTable(tableName=db.relational_db , columns=relationalColumns , values=currentRowData)
+        db.insertDynamicTable(tableName=db.relational_db, columns=relationalColumns, values=currentRowData)
 
     if isFirstRun:
         for rowNumber in range(2, excelHandler.getMaxRow(sheet='Ref_Dictionary') + 1):
             currentRowData = excelHandler.getRowDataFromSheet(sheet='Ref_Dictionary', row=rowNumber)
-            db.insertDynamicTable(tableName=db.ref_dictionary , columns=refDictionaryColumns , values=currentRowData)
-
+            db.insertDynamicTable(tableName=db.ref_dictionary, columns=refDictionaryColumns, values=currentRowData)
 
     excelHandler.saveSpreadSheet(fileName=InputFileName)
 
@@ -171,17 +170,18 @@ for file in list_of_files:
     excelHandlerForOutput.saveDFtoExcel('pass', df_pass)
 
     # GET MIN MAX
-    b = Reports(input,'CL_AGE_GROUP_EN_V1')
+    b = Reports(input)
     min_max = b.minmax()
     excelHandlerForOutput.saveDFtoExcel('min_max', min_max)
 
-    # GET DIFFERENCE AND PERCENTAGE DIFFERENCE
-    diff = b.changes()
-    excelHandlerForOutput.saveDFtoExcel('changes', diff)
+    # # FREQ CHECK
+    # freq = b.frequency()
+    # excelHandlerForOutput.saveDFtoExcel('frequency', freq)
 
-    # FREQ CHECK
-    freq = b.frequency()
+    # GET DIFFERENCE AND PERCENTAGE DIFFERENCE
+    diff, freq = b.changes()
     excelHandlerForOutput.saveDFtoExcel('frequency', freq)
+    excelHandlerForOutput.saveDFtoExcel('changes', diff)
 
     # GET TOTALS REPORT
     total = b.totals_new()
