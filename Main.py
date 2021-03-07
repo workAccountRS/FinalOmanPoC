@@ -27,8 +27,6 @@ for file in list_of_files:
     db = DB(landing_db='landing_db' + tablePostFix, relational_db='relational_db' + tablePostFix,
             s2t_mapping='s2t_mapping' + tablePostFix, ref_dictionary='ref_dictionary' + tablePostFix)
 
-    isFirstRun = db.getNumberOfRecords(tableName=db.s2t_mapping) > 0
-
     # COLUMNS TO CREATE DYNAMIC TABLES
     s2tColumns = excelHandler.getRowDataFromSheet(sheet='S2T Mapping', row=1)
     relationalColumns = excelHandler.getRowDataFromSheet(sheet='Relational DB', row=2)
@@ -39,6 +37,9 @@ for file in list_of_files:
     db.createDynamicTable(tableName=db.relational_db, columns=relationalColumns)
     db.createDynamicTable(tableName=db.landing_db, columns=relationalColumns)
     db.createDynamicTable(tableName=db.ref_dictionary, columns=refDictionaryColumns)
+
+    isFirstRun = not (db.getNumberOfRecords(tableName=db.s2t_mapping) > 0)
+
 
     lastRow = excelHandler.getMaxRow(sheet='Landing DB') + 1
 

@@ -96,7 +96,6 @@ class DB:
         cursor = self.connection.cursor()
         try:
             cursor.execute(sql)
-            self.connection.commit()
             print(' A NEW TABLE WITH THE FOLLOWING NAME:', str(tableName),
                   ' HAS BEEN CREATED')
         except Exception as e:
@@ -123,13 +122,12 @@ class DB:
         valuesSQL = valuesSQL.replace("'NULL'", "NULL")
         sql = """INSERT INTO {0} ({1})
                 values ({2})""".format(tableName, columnsSQL, valuesSQL)
+        print(':::::', sql)
         cursor = self.connection.cursor()
         try:
             cursor.execute(sql)
-            self.connection.commit()
         except Exception as e:
             print(e)
-            print(':::::', sql)
             return
 
     def insertIntoLandingDB(self, sheetSource='', cellSource='', cellContent='', TimeStamp='', BatchID=''):
@@ -141,7 +139,6 @@ class DB:
         print(':::::', sql)
         cursor = self.connection.cursor()
         cursor.execute(sql)
-        self.connection.commit()
 
     def printRelationalDB(self):
         db = cx_Oracle.connect('{0}/{1}@{2}:{3}/{4}'.format(config.username,
@@ -178,6 +175,7 @@ class DB:
             cursor.execute(sql)
             counter = 0
             for record in cursor:
+                print(record)
                 counter+=1
             return counter
         except Exception as e:
@@ -224,4 +222,5 @@ class DB:
     def closeConnection(self):
         # release the connection
         if self.connection:
+            self.connection.commit()
             self.connection.close()
