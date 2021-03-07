@@ -110,22 +110,26 @@ class DB:
     def insertDynamicTable(self, tableName, columns, values):
         columnsSQL = """"""
         valuesSQL = """"""
+        counter = 0
         for column, value in zip(columns, values):
+            counter += 1
+            isLastValue = counter == len(columns)
             columnsSQL += """{0} {1}
-                          """.format(column, ',' if not column == columns[-1] else '')
+                          """.format(column, ',' if not isLastValue else '')
+            isLastValue = counter == len(values)
             value = 'NULL' if value is None else value
             valuesSQL += """'{0}' {1}
-                                     """.format(value, ',' if not value == values[-1] else '')
+                                     """.format(value, ',' if not isLastValue else '')
         valuesSQL = valuesSQL.replace("'NULL'", "NULL")
         sql = """INSERT INTO {0} ({1})
                 values ({2})""".format(tableName, columnsSQL, valuesSQL)
-        print(':::::', sql)
         cursor = self.connection.cursor()
         try:
             cursor.execute(sql)
             self.connection.commit()
         except Exception as e:
             print(e)
+            print(':::::', sql)
             return
 
     def insertIntoLandingDB(self, sheetSource='', cellSource='', cellContent='', TimeStamp='', BatchID=''):
@@ -163,6 +167,22 @@ class DB:
         cursor.execute(SQL)
         for record in cursor:
             print('landing_db', record)
+
+
+    def getNumberOfRecords(self,tableName):
+
+        sql = "SELECT * FROM {0}".format(tableName)
+        print(':::::', sql)
+        cursor = self.connection.cursor()
+        try:
+            cursor.execute(sql)
+            counter = 0
+            for record in cursor:
+                counter+=1
+            return counter
+        except Exception as e:
+            print(e)
+            return
 
     def printS2t(self):
         db = cx_Oracle.connect('{0}/{1}@{2}:{3}/{4}'.format(config.username,

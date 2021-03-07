@@ -27,6 +27,8 @@ for file in list_of_files:
     db = DB(landing_db='landing_db' + tablePostFix, relational_db='relational_db' + tablePostFix,
             s2t_mapping='s2t_mapping' + tablePostFix, ref_dictionary='ref_dictionary' + tablePostFix)
 
+    isFirstRun = db.getNumberOfRecords(tableName=db.s2t_mapping) > 0
+
     # COLUMNS TO CREATE DYNAMIC TABLES
     s2tColumns = excelHandler.getRowDataFromSheet(sheet='S2T Mapping', row=1)
     relationalColumns = excelHandler.getRowDataFromSheet(sheet='Relational DB', row=2)
@@ -63,7 +65,8 @@ for file in list_of_files:
             skipedRows.append(rowNumber)
             continue
 
-        db.insertDynamicTable(tableName=db.s2t_mapping, columns=s2tColumns, values=currentRowData)
+        if  isFirstRun:
+            db.insertDynamicTable(tableName=db.s2t_mapping, columns=s2tColumns, values=currentRowData)
 
         source_data = excelHandler.getCellFromSheet(sheet=sheet_source, cell=cell_source)
         target_data = excelHandler.getCellFromSheet(sheet=sheet_target, cell=cell_target)
@@ -112,9 +115,10 @@ for file in list_of_files:
 
         db.insertDynamicTable(tableName=db.relational_db , columns=relationalColumns , values=currentRowData)
 
-    for rowNumber in range(2, excelHandler.getMaxRow(sheet='Ref_Dictionary') + 1):
-        currentRowData = excelHandler.getRowDataFromSheet(sheet='Ref_Dictionary', row=rowNumber)
-        db.insertDynamicTable(tableName=db.ref_dictionary , columns=refDictionaryColumns , values=currentRowData)
+    if isFirstRun:
+        for rowNumber in range(2, excelHandler.getMaxRow(sheet='Ref_Dictionary') + 1):
+            currentRowData = excelHandler.getRowDataFromSheet(sheet='Ref_Dictionary', row=rowNumber)
+            db.insertDynamicTable(tableName=db.ref_dictionary , columns=refDictionaryColumns , values=currentRowData)
 
 
     excelHandler.saveSpreadSheet(fileName=InputFileName)

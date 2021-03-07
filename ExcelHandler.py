@@ -36,6 +36,7 @@ class ExcelHandler:
         sheet = self.wb[sheet]
         rowData = []
         letters = [chr(i) for i in range(ord('A'), ord('Z') + 1)]
+        letters.extend(['AA' , 'AB'  , 'AC'  , 'AD'  , 'AE'  , 'AF'  , 'AG'  , 'AH'])
         for i in range(0, sheet.max_column):
             rowData.append(sheet['{0}{1}'.format(letters[i], row)].value)
         return rowData
