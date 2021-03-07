@@ -175,7 +175,6 @@ class DB:
             cursor.execute(sql)
             counter = 0
             for record in cursor:
-                print(record)
                 counter+=1
             return counter
         except Exception as e:
@@ -217,6 +216,7 @@ class DB:
         df_all = pd.read_sql(SQL, con=self.connection)
         df_new = df_all[df_all.TIME_STAMP == time_stamp].reset_index(drop=True)
         df_old = df_all[df_all.TIME_STAMP != time_stamp].reset_index(drop=True)
+        print('TEST' , str(df_old) , str(df_new))
         return df_new, df_old
 
     def closeConnection(self):

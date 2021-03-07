@@ -35,7 +35,7 @@ for file in list_of_files:
 
     db.createDynamicTable(tableName=db.s2t_mapping, columns=s2tColumns)
     db.createDynamicTable(tableName=db.relational_db, columns=relationalColumns)
-    db.createDynamicTable(tableName=db.landing_db, columns=relationalColumns)
+    db.createDynamicTable(tableName=db.landing_db, columns=landingDBColumns)
     db.createDynamicTable(tableName=db.ref_dictionary, columns=refDictionaryColumns)
 
     isFirstRun = not (db.getNumberOfRecords(tableName=db.s2t_mapping) > 0)
@@ -109,8 +109,10 @@ for file in list_of_files:
 
     for rowNumber in range(4, excelHandler.getMaxRow(sheet='Relational DB') + 1):
         # TIME AND BATCH ID
-        excelHandler.writeCell(sheet='Relational DB', cell=str('Y' + str(rowNumber)), value=currentTime)
-        excelHandler.writeCell(sheet='Relational DB', cell=str('Z' + str(rowNumber)), value=str(BatchID))
+
+        cell = excelHandler.getCellCoordinate(sheet='Relational DB')
+        excelHandler.writeCell(sheet='Relational DB', cell=str(str(cell[0]) + str(rowNumber)), value=currentTime)
+        excelHandler.writeCell(sheet='Relational DB', cell=str(str(cell[1]) + str(rowNumber)), value=str(BatchID))
 
         currentRowData = excelHandler.getRowDataFromSheet(sheet='Relational DB', row=rowNumber)
 

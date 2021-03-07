@@ -41,6 +41,16 @@ class ExcelHandler:
             rowData.append(sheet['{0}{1}'.format(letters[i], row)].value)
         return rowData
 
+    def getCellCoordinate(self, sheet="S2T Mapping", row=1):
+        sheet = self.wb[sheet]
+        for index, row in enumerate(sheet.iter_rows()):
+            for cell in row:
+                if cell.value == 'Time_Stamp':
+                    timeStampCell = cell.coordinate[:-1]
+                if cell.value == 'Batch_ID':
+                    batchIdCell = cell.coordinate[:-1]
+        return [timeStampCell, batchIdCell]
+
     def getCellFromSheet(self, sheet="S2T Mapping", cell="A1"):
         sheet = self.wb[sheet]
         return sheet[str(cell)].value
