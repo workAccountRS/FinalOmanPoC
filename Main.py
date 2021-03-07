@@ -162,7 +162,7 @@ for file in list_of_files:
     excelHandlerForOutput.saveDFtoExcel('pass', df_pass)
 
     # GET MIN MAX
-    b = Reports(input,None)
+    b = Reports(input,'CL_AGE_GROUP_EN_V1')
     min_max = b.minmax()
     excelHandlerForOutput.saveDFtoExcel('min_max', min_max)
 

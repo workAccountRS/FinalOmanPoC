@@ -10,7 +10,7 @@ class Preprocess:
         self.table = table
         self.columns = self.table.columns
         self.freq = self.table['FREQUENCY'][self.table.FREQUENCY.first_valid_index()].upper()
-        self.dates = ['PUBLICATION_DATE_AR','PUBLICATION_DATE_EN','TIME_PERIOD_Y','TIME_PERIOD_M']
+        self.dates = ['PUBLICATION_DATE_AR', 'PUBLICATION_DATE_EN', 'TIME_PERIOD_Y', 'TIME_PERIOD_M']
         self.value = ['OBS_VALUE']
 
     def preptext(self, text):
@@ -114,21 +114,23 @@ class Preprocess:
         return output
 
     def getPrepTable(self):
+        for i in self.columns:
+            self.table[i] = self.table[i].str.strip()
 
-            input = self.table.assign(OBS_VALUE_P=self.getObsVal(self.table['OBS_VALUE']))
-            if not self.freq.__contains__('YEAR'):
-                input = input.assign(TIME_PERIOD_M_P=self.getMonth(input['TIME_PERIOD_M']))
-                input = input.assign(TIME_PERIOD_Y_P=self.getYear(input['TIME_PERIOD_Y']))
-                input = input.assign(TIME_PERIOD_DATE_P=self.getDate(input['TIME_PERIOD_M_P'],input['TIME_PERIOD_Y_P']))
-            else:
-                input = input.assign(TIME_PERIOD_Y_P=self.getYear(input['TIME_PERIOD_Y']))
-                input = input.assign(TIME_PERIOD_DATE_P=self.getDate(input['TIME_PERIOD_Y_P']))
+        input = self.table.assign(OBS_VALUE_P=self.getObsVal(self.table['OBS_VALUE']))
+        if not self.freq.__contains__('YEAR'):
+            input = input.assign(TIME_PERIOD_M_P=self.getMonth(input['TIME_PERIOD_M']))
+            input = input.assign(TIME_PERIOD_Y_P=self.getYear(input['TIME_PERIOD_Y']))
+            input = input.assign(TIME_PERIOD_DATE_P=self.getDate(input['TIME_PERIOD_M_P'], input['TIME_PERIOD_Y_P']))
+        else:
+            input = input.assign(TIME_PERIOD_Y_P=self.getYear(input['TIME_PERIOD_Y']))
+            input = input.assign(TIME_PERIOD_DATE_P=self.getDate(input['TIME_PERIOD_Y_P']))
 
-            input = input.assign(PUBLICATION_DATE_AR_P=
-                                 self.getDate(self.getMonth(input['PUBLICATION_DATE_AR']),
-                                              self.getYear(input['PUBLICATION_DATE_AR'])))
-            input = input.assign(PUBLICATION_DATE_EN_P=
-                                 self.getDate(self.getMonth(input['PUBLICATION_DATE_EN']),
-                                              self.getYear(input['PUBLICATION_DATE_EN'])))
+        input = input.assign(PUBLICATION_DATE_AR_P=
+                             self.getDate(self.getMonth(input['PUBLICATION_DATE_AR']),
+                                          self.getYear(input['PUBLICATION_DATE_AR'])))
+        input = input.assign(PUBLICATION_DATE_EN_P=
+                             self.getDate(self.getMonth(input['PUBLICATION_DATE_EN']),
+                                          self.getYear(input['PUBLICATION_DATE_EN'])))
 
-            return input
+        return input
