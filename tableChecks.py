@@ -18,7 +18,6 @@ class Table:
         if self.freq.__contains__('YEAR') or self.freq.__contains__('ANNUAL'):
             self.columns.remove('TIME_PERIOD_M')
 
-        print('columns', self.columns)
 
     def table_rules(self, row):
         output = {'isnull': [],
@@ -29,46 +28,49 @@ class Table:
 
         input = row
         lookups = self.lookups
+        iter_over = [i for i in self.columns if i.upper().endswith('_P')]
+        for item in iter_over:
+            if item.upper() in ['PUBLICATION_DATE_EN_P','PUBLICATION_DATE_AR_P','TIME_PERIOD_DATE_P', 'OBS_VALUE_P']:
+                continue
 
-        for item in self.columns:
-            if item.upper().endswith('_P'):
-                if item.upper() in ['TIME_PERIOD_DATE_P', 'OBS_VALUE_P']:
+            elif input[item] is None:
+                org = item[:-2].upper()
+                if input[org] is None:
                     continue
                 else:
-                    if input[item] is None:
-                        org = item[:-2].upper()
-                        if input[org] is None:
-                            continue
-                        else:
-                            output['invalid input'].append(org)
+                    output['invalid input'].append(org)
 
             else:
                 # CHECK NULL AND TEXT TYPE
-                if rules.notnull(input[item]):
+                if rules.notnull(input[item[:-2]]):
                     # CHECK DATA TYPE
                     dataType = 'text'
-                    if str(item).upper() == 'TIME_PERIOD_Y':
+                    if str(item).upper() == 'TIME_PERIOD_Y_P':
                         dataType = 'number'
 
                     if not rules.data_type(input[item], dataType):
-                        output['wrong type'].append(item)
+                        output['wrong type'].append(item[:-2])
 
                     if item.upper().__contains__('CL'):
                         if str(item).upper() in [*lookups['CL_ID']]:
                             if not rules.check_dict(input[item], item, lookups):
-                                output['out of range lookup'].append(item)
+                                output['out of range lookup'].append(item[:-2])
 
                     elif str(item).upper().__contains__('EN'):
                         if not rules.lang(input[item], 'en'):
-                            output['wrong language'].append(item)
+                            output['wrong language'].append(item[:-2])
 
                     elif str(item).upper().__contains__('AR'):
-                        if not rules.lang(input[item], 'ar'):
-                            output['wrong language'].append(item)
+                        if not item.upper().__contains__('DATE'):
+                            if input[item].__contains__('na'):
+                                continue
+                            else:
+                                if not rules.lang(input[item], 'ar'):
+                                    output['wrong language'].append(item[:-2])
 
                 else:
                     if item not in self.optionalColumns:
-                        output['isnull'].append(item)
+                        output['isnull'].append(item[:-2])
 
         return output
 
@@ -88,9 +90,7 @@ class Table:
             else:
                 df_pass = df_pass.append(pd.DataFrame([[*row.values]], columns=df_pass.columns), ignore_index=True)
 
-        return_cols_fail = [i for i in df_fail.columns if not i.upper().__contains__('_P')]
-        print('fail', return_cols_fail)
-        return_cols_pass = [i for i in df_pass.columns if not i.upper().__contains__('_P')]
-        print('pass', return_cols_pass)
+        return_cols_fail = [i for i in df_fail.columns if not i.upper().endswith('_P')]
+        return_cols_pass = [i for i in df_pass.columns if not i.upper().endswith('_P')]
 
         return df_pass[return_cols_pass], df_fail[return_cols_fail]

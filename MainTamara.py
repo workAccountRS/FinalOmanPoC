@@ -33,17 +33,12 @@ for file in list_of_files:
     refDictionaryColumns = excelHandler.getRowDataFromSheet(sheet='Ref_Dictionary', row=1)
     landingDBColumns = excelHandler.getRowDataFromSheet(sheet='Landing DB', row=1)
 
-    db.createDynamicTable(tableName=db.s2t_mapping, columns=s2tColumns)
-    db.createDynamicTable(tableName=db.relational_db, columns=relationalColumns)
-    db.createDynamicTable(tableName=db.landing_db, columns=landingDBColumns)
-    db.createDynamicTable(tableName=db.ref_dictionary, columns=refDictionaryColumns)
-
     isFirstRun = not (db.getNumberOfRecords(tableName=db.s2t_mapping) > 0)
 
     lastRow = excelHandler.getMaxRow(sheet='Landing DB') + 1
 
     BatchID = Utilities.getBatchID()
-    currentTime = Utilities.getCurrentTime()
+    currentTime = '08/03/2021 20:02:20'
 
     skipedRows = []
     errors = []
@@ -65,16 +60,8 @@ for file in list_of_files:
             skipedRows.append(rowNumber)
             continue
 
-        if isFirstRun:
-            db.insertDynamicTable(tableName=db.s2t_mapping, columns=s2tColumns, values=currentRowData)
-
-        source_data = excelHandler.getCellFromSheet(sheet=str(sheet_source), cell=cell_source)
-        target_data = excelHandler.getCellFromSheet(sheet=str(sheet_target), cell=cell_target)
-
-        print("============= ROW NUMBER: ", rowNumber)
-        print("UNIQUE ID: ", str(BatchID), " DATE AND TIME =", currentTime)
-        print("SOURCE DATA: ", source_data)
-        print("============================")
+        source_data = excelHandler.getCellFromSheet(sheet=sheet_source, cell=cell_source)
+        target_data = excelHandler.getCellFromSheet(sheet=sheet_target, cell=cell_target)
 
         # TASK 2 FILL THE LANDING DB:
         # Sheet_Source | Cell_Source | Cell_Content	| Time_Stamp | Batch_ID
@@ -94,12 +81,6 @@ for file in list_of_files:
             excelHandler.writeCell(sheet='Landing DB', cell=str('D' + str(lastRow)), value=currentTime)
             excelHandler.writeCell(sheet='Landing DB', cell=str('E' + str(lastRow)), value=str(BatchID))
 
-            # db.insertIntoLandingDB(sheetSource=sheet_source, cellSource=cell_source, cellContent=source_data,
-            #                        TimeStamp=currentTime, BatchID=BatchID)
-
-            db.insertDynamicTable(tableName=db.landing_db, columns=landingDBColumns,
-                                  values=[sheet_source, cell_source, source_data, currentTime, str(BatchID)])
-
         # except Exception as e:
         #     print("ERROR IN ROW#" + str(rowNumber) + " -- " + str(e))
         #     errors.append(['ROW NUMBER:' + str(rowNumber), 'CELL SOURCE:' + cell_source, 'CELL TARGET:' + cell_target , 'ERROR: ' + str(e)]  )
@@ -116,16 +97,9 @@ for file in list_of_files:
 
         currentRowData = excelHandler.getRowDataFromSheet(sheet='Relational DB', row=rowNumber)
 
-        db.insertDynamicTable(tableName=db.relational_db, columns=relationalColumns, values=currentRowData)
-
-    if isFirstRun:
-        for rowNumber in range(2, excelHandler.getMaxRow(sheet='Ref_Dictionary') + 1):
-            currentRowData = excelHandler.getRowDataFromSheet(sheet='Ref_Dictionary', row=rowNumber)
-            db.insertDynamicTable(tableName=db.ref_dictionary, columns=refDictionaryColumns, values=currentRowData)
-
     excelHandler.saveSpreadSheet(fileName=InputFileName)
 
-    ExcelToPDF.excelToPDF(pdfFileName=pdfFileName, fileName=InputFileName)
+    # ExcelToPDF.excelToPDF(pdfFileName=pdfFileName, fileName=InputFileName)
 
     # db.printDescription()
     # db.printLandingDB()
@@ -146,9 +120,9 @@ for file in list_of_files:
     from Preprocess import Preprocess
     from Reports import Reports
     import tableChecks
-
     import pandas as pd
-    pd.set_option('display.max_rows', None)
+
+    pd.set_option('display.max_columns', None)
 
     formattedTime = str(currentTime).replace('/', '-').replace(':', '').replace(' ', '_')
     outputFile = 'Validation_{0}_{1}.xlsx'.format(pdfFileName, formattedTime)
@@ -166,15 +140,15 @@ for file in list_of_files:
     df_old = prep.initialPrep(df_old)
     ref_dict = prep.initialPrep(ref_dict)
 
-    # PRED DISCREPANCIES CHECK
-    print('____________________________PredDisc____________________________')
-    PredDisc = prep.getPredDiscrepancies(df_curr,df_old)
-    excelHandlerForOutput.saveDFtoExcel('predecessor discrepancies', PredDisc)
-
     # PREP DATES AND NUMBER VALUES
     print('____________________________date and obs prep____________________________')
     relational_data = prep.prepDatesAndValues(df_curr)
     reports = Reports(relational_data)
+
+    # PRED DISCREPANCIES CHECK
+    print('____________________________PredDisc____________________________')
+    PredDisc = reports.getPredDiscrepancies(df_curr,df_old)
+    excelHandlerForOutput.saveDFtoExcel('predecessor discrepancies', PredDisc)
 
 
 
@@ -202,4 +176,3 @@ for file in list_of_files:
 
     excelHandlerForOutput.closeWriter()
     db.closeConnection()
-

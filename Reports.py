@@ -5,27 +5,25 @@ class Reports:
     def __init__(self, table):
         self.table = table
         self.columns = [*self.table.columns]
-        self.freq = 0 # monthly = 0
+        self.freq = 0  # monthly = 0
         self.lookups = []
         self.lookups_en = []
-        self.time_period = []
+        self.time_period = ['TIME_PERIOD_Y','TIME_PERIOD_M']
         self.values = 'OBS_VALUE_P'
         self.date = 'TIME_PERIOD_DATE_P'
 
         freq_val = self.table['FREQUENCY'][self.table.FREQUENCY.first_valid_index()].upper()
         if freq_val.__contains__('YEAR') or freq_val.__contains__('ANNUAL'):
-            self.freq = 1 #yearly = 1
+            self.freq = 1  # yearly = 1
 
         if self.freq == 1:
             self.columns.remove('TIME_PERIOD_M')
+            self.time_period.remove('TIME_PERIOD_M')
 
         for i in self.columns:
-            if i.upper().__contains__('TIME_PERIOD') and not i.upper().endswith('_P'):
-                self.time_period.append(i)
-
-            elif i.upper().__contains__('CL'):
+            if i.upper().__contains__('CL'):
                 self.lookups.append(i)
-                if i.upper().__contains__('EN'):
+                if not i.upper().__contains__('_AR_'):
                     self.lookups_en.append(i)
 
         self.group_list = self.lookups_en + [self.values, self.date]
@@ -47,10 +45,7 @@ class Reports:
 
         # GET DIFFERENCE AND PERCENTAGE DIFFERENCE
         order_list = self.lookups_en + [self.date]
-
         diff = self.table[self.group_list].sort_values(by=order_list).reset_index(drop=True)
-        print('HEEEEEEEEERRRRRRRRRRRRRRRRREEEEEEEEEEEEEEEEE')
-        print(diff.head())
         diff = diff.assign(FREQUENCY=None, DIFFERENCE=None, PERCENT_DIFFERENCE=None)
 
         for i in range(len(diff) - 1):
@@ -58,7 +53,7 @@ class Reports:
                 frq = diff[self.date][i + 1].year - diff[self.date][i].year
             else:
                 frq = (diff[self.date][i + 1].year - diff[self.date][i].year) * 12 \
-                                           + (diff[self.date][i + 1].month - diff[self.date][i].month)
+                      + (diff[self.date][i + 1].month - diff[self.date][i].month)
 
             if frq == 1:
                 diff.at[i + 1, 'FREQUENCY'] = frq
@@ -74,72 +69,46 @@ class Reports:
 
         order_list = [self.date] + self.lookups_en
         diff = diff.sort_values(by=order_list).reset_index(drop=True)
-        freq = diff.drop_duplicates(subset=[self.date,'FREQUENCY'])
-
-        print(freq)
+        freq = diff.drop_duplicates(subset=[self.date, 'FREQUENCY'])
 
         return diff, freq
 
-    def frequency(self):
-        freq = self.table.drop_duplicates([self.date])[[self.date]].sort_values(by=self.date).reset_index(drop=True)
+    def totals_new(self, ref_dict):
+        full_table = self.table
+        ref_dict_en = ref_dict['CL_ID_P'].apply(lambda x: not str(x).__contains__('ar'))
+        ref_dict_en = ref_dict[ref_dict_en]
 
-        if self.freq == 1:
-            freq = freq.assign(Years=None)
-            for i in range(len(freq) - 1):
-                freq.at[i + 1, 'Years'] = freq[self.date][i + 1].year - freq[self.date][i].year
+        lookups = [i for i in self.lookups_en if i.upper().endswith('_P')]
+
+        if len(set(full_table[self.date])) < 2:
+            group_by = []
         else:
-            freq = freq.assign(Months=None)
-            for i in range(len(freq) - 1):
-                freq.at[i + 1, 'Months'] = (freq[self.date][i + 1].year - freq[self.date][i].year) *12 \
-                                           + (freq[self.date][i + 1].month - freq[self.date][i].month)
-        return freq
+            group_by = self.time_period
+        for i in lookups:
+            temp = pd.DataFrame({'DESCRIPTION_P': self.table[i]})
+            temp = temp.assign(CL_ID_P=i[:-2].lower())
+            temp = temp.merge(ref_dict_en[['CL_ID_P', 'DESCRIPTION_P', 'ID_P', 'P_ID_P']],
+                              on=['CL_ID_P', 'DESCRIPTION_P'], how='left')
+            full_table[i + '_ID'] = temp['ID_P']
+            full_table[i + '_ParentID'] = temp['P_ID_P']
+            group_by.append(i + '_ID')
 
-    def getSumBy(self):
-        sum_by = []
-        for i in self.lookups_en:
-            exists = 'TOTAL' in set(self.table[i].str.upper())
-            if exists:
-                sum_by.append(i)
-        return sum_by
+        actual_totals = pd.DataFrame(columns=group_by+['OBS_VALUE_P'])
+        for i in group_by:
+            group_by_list = group_by[:]
+            group_by_list.remove(i)
+            group_by_list.append(i.replace('_ID', '_ParentID'))
+            temp2 = full_table.groupby(group_by_list).agg({'OBS_VALUE_P': "sum"}).reset_index()
+            temp2.columns = [i.replace('_ParentID', '_ID') for i in temp2.columns]
+            actual_totals = actual_totals.append(temp2, ignore_index=True)
 
-    def totals_new(self):
-        sum_by_list = self.getSumBy()
-        totals = None
-        for sum_by in sum_by_list:
-            group = self.lookups_en + [self.values, self.date]
-            group.remove(sum_by)
-            group.remove(self.values)
+        on = [i for i in actual_totals.columns if not i.__contains__('OBS')]
 
-            reported_totals = self.table[self.table[sum_by].str.upper() == 'TOTAL'] \
-                .groupby(group).agg({self.values: "sum"})
+        totals = actual_totals.merge(full_table,on=on, how='left', suffixes=('_L', '_R'))
 
-            actual_totals = self.table[self.table[sum_by].str.upper() != 'TOTAL'].groupby(group) \
-                .agg({self.values: "sum"})
+        out_cols = self.lookups + self.time_period + ['OBS_VALUE_P_L','OBS_VALUE_P_R']
+        totals = totals[out_cols]
 
-            sub_totals = reported_totals.merge(actual_totals, on=group, how='right'
-                                               ).merge(reported_totals - actual_totals, on=group, how='left')
+        totals = totals.rename(columns = {'OBS_VALUE_P_L': 'ACTUAL TOTALS', 'OBS_VALUE_P_R': 'REPORTED TOTALS'}, inplace = False)
 
-            if totals is None:
-                totals = sub_totals
-            else:
-                totals = totals.append(sub_totals, ignore_index=True)
-
-        totals.columns = ['Reported Total', 'Actual Total', 'Reported-Actual']
         return totals
-
-    def getPredDiscrepancies(self, old_table):
-        if old_table.empty:
-            PredDisc = pd.DataFrame({'MESSAGE': ['No previously inserted data for this table']})
-        else:
-            joint_table = self.table[[*old_table.columns]].append(old_table, ignore_index=True)
-
-            df_obj = joint_table.select_dtypes(['object'])
-            joint_table[df_obj.columns] = df_obj.apply(lambda x: x.str.strip())
-
-            PredDisc = joint_table.drop_duplicates(subset=joint_table.columns.difference(['TIME_STAMP', 'BATCH_ID']),
-                                                   keep=False)
-
-            if PredDisc.empty:
-                PredDisc = pd.DataFrame({'MESSAGE': ['No predecessor discrepancies']})
-
-        return PredDisc

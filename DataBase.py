@@ -29,6 +29,7 @@ class DB:
             cx_Oracle.connect
 
             print('VERSION::', self.connection.version)
+            self.cursor = self.connection.cursor()
 
 
         except cx_Oracle.Error as error:
@@ -41,7 +42,7 @@ class DB:
         print('-------------------landing_db------------------------')
 
         sql = """SELECT * FROM {0}""".format(self.landing_db)
-        cursor = self.connection.cursor()
+        cursor = self.cursor
         cursor.execute(sql)
         for each in cursor.description:
             print(each[0:2])
@@ -53,7 +54,7 @@ class DB:
         print('---------------------relational_db---------------------')
 
         sql = """SELECT * FROM {0}""".format(self.relational_db)
-        cursor = self.connection.cursor()
+        cursor = self.cursor
         cursor.execute(sql)
         c = 0
         for each in cursor.description:
@@ -64,7 +65,7 @@ class DB:
         print('---------------------s2t_mapping---------------------')
 
         sql = """SELECT * FROM {0}""".format(self.s2t_mapping)
-        cursor = self.connection.cursor()
+        cursor = self.cursor
         cursor.execute(sql)
         c = 0
         for each in cursor.description:
@@ -75,7 +76,7 @@ class DB:
         print('---------------------ref_dictionary---------------------')
 
         sql = """SELECT * FROM {0}""".format(self.ref_dictionary)
-        cursor = self.connection.cursor()
+        cursor = self.cursor
         cursor.execute(sql)
         c = 0
         for each in cursor.description:
@@ -93,7 +94,7 @@ class DB:
               CREATE TABLE EPUBLICATION.{0}
           ( {1}) """.format(tableName, columnsSQL)
         print(':::::', sql)
-        cursor = self.connection.cursor()
+        cursor = self.cursor
         try:
             cursor.execute(sql)
             print(' A NEW TABLE WITH THE FOLLOWING NAME:', str(tableName),
@@ -123,7 +124,7 @@ class DB:
         sql = """INSERT INTO {0} ({1})
                 values ({2})""".format(tableName, columnsSQL, valuesSQL)
         print(':::::', sql)
-        cursor = self.connection.cursor()
+        cursor = self.cursor
         try:
             cursor.execute(sql)
         except Exception as e:
@@ -137,7 +138,7 @@ class DB:
                                                           TimeStamp, BatchID, self.landing_db)
 
         print(':::::', sql)
-        cursor = self.connection.cursor()
+        cursor = self.cursor
         cursor.execute(sql)
 
     def printRelationalDB(self):
@@ -170,7 +171,7 @@ class DB:
 
         sql = "SELECT * FROM {0}".format(tableName)
         print(':::::', sql)
-        cursor = self.connection.cursor()
+        cursor = self.cursor
         try:
             cursor.execute(sql)
             counter = 0
@@ -216,7 +217,6 @@ class DB:
         df_all = pd.read_sql(SQL, con=self.connection)
         df_new = df_all[df_all.TIME_STAMP == time_stamp].reset_index(drop=True)
         df_old = df_all[df_all.TIME_STAMP != time_stamp].reset_index(drop=True)
-        print('TEST' , str(df_old) , str(df_new))
         return df_new, df_old
 
     def closeConnection(self):
