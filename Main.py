@@ -148,6 +148,7 @@ for file in list_of_files:
     import tableChecks
 
     import pandas as pd
+
     pd.set_option('display.max_rows', None)
 
     formattedTime = str(currentTime).replace('/', '-').replace(':', '').replace(' ', '_')
@@ -155,51 +156,56 @@ for file in list_of_files:
     excelHandler.creatWorkBook(outputFile)
     excelHandlerForOutput = ExcelHandler(fileName=outputFile)
 
-    # GET TABLES FROM DB INTO PANDAS DATAFRAME
-    df_curr, df_old = db.relationalDF(selctedTable=db.relational_db, time_stamp=currentTime)
-    ref_dict = db.getTableToDF(selctedTable=db.ref_dictionary)
+    try:
 
-    # PREPROCESS ALL DF (STRIP FROM EXTRA WHITE SPACE AND REMOVE ARABIC SPECIAL CHARACTERS)
-    print('____________________________INITAIL PREP____________________________')
-    prep = Preprocess()
-    df_curr = prep.initialPrep(df_curr)
-    df_old = prep.initialPrep(df_old)
-    ref_dict = prep.initialPrep(ref_dict)
+        # GET TABLES FROM DB INTO PANDAS DATAFRAME
+        df_curr, df_old = db.relationalDF(selctedTable=db.relational_db, time_stamp=currentTime)
+        ref_dict = db.getTableToDF(selctedTable=db.ref_dictionary)
 
-    # PRED DISCREPANCIES CHECK
-    print('____________________________PredDisc____________________________')
-    PredDisc = prep.getPredDiscrepancies(df_curr,df_old)
-    excelHandlerForOutput.saveDFtoExcel('predecessor discrepancies', PredDisc)
+        # PREPROCESS ALL DF (STRIP FROM EXTRA WHITE SPACE AND REMOVE ARABIC SPECIAL CHARACTERS)
+        print('____________________________INITAIL PREP____________________________')
+        prep = Preprocess()
+        df_curr = prep.initialPrep(df_curr)
+        df_old = prep.initialPrep(df_old)
+        ref_dict = prep.initialPrep(ref_dict)
 
-    # PREP DATES AND NUMBER VALUES
-    print('____________________________date and obs prep____________________________')
-    relational_data = prep.prepDatesAndValues(df_curr)
-    reports = Reports(relational_data)
+        # PRED DISCREPANCIES CHECK
+        print('____________________________PredDisc____________________________')
+        PredDisc = prep.getPredDiscrepancies(df_curr, df_old)
+        excelHandlerForOutput.saveDFtoExcel('predecessor discrepancies', PredDisc)
 
+        # PREP DATES AND NUMBER VALUES
+        print('____________________________date and obs prep____________________________')
+        relational_data = prep.prepDatesAndValues(df_curr)
+        reports = Reports(relational_data)
 
+        # GET GOOD AND BAD ROWS AND OUTPUT TO EXCEL
+        print('____________________________pass fail____________________________')
+        tableRules = tableChecks.Table(relational_data, ref_dict)
+        df_pass, df_fail = tableRules.getPassFail()
+        excelHandlerForOutput.saveDFtoExcel('fail', df_fail)
+        excelHandlerForOutput.saveDFtoExcel('pass', df_pass)
 
-    # GET GOOD AND BAD ROWS AND OUTPUT TO EXCEL
-    print('____________________________pass fail____________________________')
-    tableRules = tableChecks.Table(relational_data, ref_dict)
-    df_pass, df_fail = tableRules.getPassFail()
-    excelHandlerForOutput.saveDFtoExcel('fail', df_fail)
-    excelHandlerForOutput.saveDFtoExcel('pass', df_pass)
+        # GET MIN MAX
+        print('____________________________min max____________________________')
+        min_max = reports.minmax()
+        excelHandlerForOutput.saveDFtoExcel('min_max', min_max)
 
-    # GET MIN MAX
-    print('____________________________min max____________________________')
-    min_max = reports.minmax()
-    excelHandlerForOutput.saveDFtoExcel('min_max', min_max)
+        # GET DIFFERENCE AND PERCENTAGE DIFFERENCE
+        print('____________________________changes____________________________')
+        diff, freq = reports.changes()
+        excelHandlerForOutput.saveDFtoExcel('frequency', freq)
+        excelHandlerForOutput.saveDFtoExcel('changes', freq)
 
-    # GET DIFFERENCE AND PERCENTAGE DIFFERENCE
-    print('____________________________changes____________________________')
-    diff, freq = reports.changes()
-    excelHandlerForOutput.saveDFtoExcel('frequency', freq)
-    excelHandlerForOutput.saveDFtoExcel('changes', diff)
+        # GET TOTALS REPORT
+        print('____________________________Total____________________________')
+        total = reports.totals_new(ref_dict)
+        excelHandlerForOutput.saveDFtoExcel('total', total)
+        excelHandlerForOutput.closeWriter()
 
-    # GET TOTALS REPORT
-    total = reports.totals_new(ref_dict)
-    excelHandlerForOutput.saveDFtoExcel('total', total)
+    except:
+        #TODO delete file
+        print('Reporting failed')
+        excelHandlerForOutput.closeWriter()
 
-    excelHandlerForOutput.closeWriter()
     db.closeConnection()
-
