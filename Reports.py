@@ -8,7 +8,7 @@ class Reports:
         self.freq = 0  # monthly = 0
         self.lookups = []
         self.lookups_en = []
-        self.time_period = ['TIME_PERIOD_Y','TIME_PERIOD_M']
+        self.time_period = ['TIME_PERIOD_Y_P','TIME_PERIOD_M']
         self.values = 'OBS_VALUE_P'
         self.date = 'TIME_PERIOD_DATE_P'
 
@@ -74,6 +74,7 @@ class Reports:
         return diff, freq
 
     def totals_new(self, ref_dict):
+        print(ref_dict['P_ID_P'])
         if ref_dict['P_ID'].isnull().all():
             return pd.DataFrame({'MESSAGE': ['Totals not applicable']})
 
@@ -83,10 +84,7 @@ class Reports:
 
         lookups = [i for i in self.lookups_en if i.upper().endswith('_P')]
 
-        if len(set(full_table[self.date])) < 2:
-            group_by = []
-        else:
-            group_by = self.time_period
+        group_by = []
         for i in lookups:
             temp = pd.DataFrame({'DESCRIPTION_P': self.table[i]})
             temp = temp.assign(CL_ID_P=i[:-2].lower())
@@ -97,15 +95,20 @@ class Reports:
             group_by.append(i + '_ID')
 
         actual_totals = pd.DataFrame(columns=group_by+['OBS_VALUE_P'])
+        group_fixed = self.time_period +['MEASURE_ID_P']
         for i in group_by:
             group_by_list = group_by[:]
             group_by_list.remove(i)
             group_by_list.append(i.replace('_ID', '_ParentID'))
-            temp2 = full_table.groupby(group_by_list).agg({'OBS_VALUE_P': "sum"}).reset_index()
+            print(group_by_list)
+            temp2 = full_table.groupby(group_by_list+group_fixed).agg({'OBS_VALUE_P': "sum"}).reset_index()
             temp2.columns = [i.replace('_ParentID', '_ID') for i in temp2.columns]
             actual_totals = actual_totals.append(temp2, ignore_index=True)
+            print(actual_totals)
 
         on = [i for i in actual_totals.columns if not i.__contains__('OBS')]
+
+        actual_totals = actual_totals.drop_duplicates()
 
         totals = actual_totals.merge(full_table,on=on, how='left', suffixes=('_L', '_R'))
 
@@ -115,3 +118,21 @@ class Reports:
         totals = totals.rename(columns = {'OBS_VALUE_P_L': 'ACTUAL TOTALS', 'OBS_VALUE_P_R': 'REPORTED TOTALS'}, inplace = False)
 
         return totals
+
+    def getPredDiscrepancies_test(self, curr_table, old_table):
+        if old_table.empty:
+            PredDisc = pd.DataFrame({'MESSAGE': ['No previously inserted data for this table']})
+        else:
+            columns_P = [i for i in old_table.columns if i.upper().endswith('_P')]
+            print(columns_P)
+            columns_output = [i for i in old_table.columns if not i.upper().endswith('_P')]
+            print(columns_output)
+
+            joint_table = curr_table.append(old_table, ignore_index=True)
+            PredDisc = joint_table.drop_duplicates(subset=columns_P, keep=False)
+            PredDisc = PredDisc[columns_output]
+
+            if PredDisc.empty:
+                PredDisc = pd.DataFrame({'MESSAGE': ['No predecessor discrepancies']})
+
+        return PredDisc

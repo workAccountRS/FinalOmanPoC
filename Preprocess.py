@@ -11,7 +11,7 @@ class Preprocess:
     # PREPROCESSED COLUMNS ARE DEFINED BY APPENDING '_P' TO ORIGINAL NAME
     def initialPrep(self,df):
         df_P = df.apply(lambda x: None if x is 'None' else x.astype(str).str.strip())  # Strip L and R space
-        df_P = df_P.apply(lambda x: None if x is 'None' else x.astype(str).str.lower())  # Strip L and R space
+        df_P = df_P.apply(lambda x: None if x is 'None' else x.astype(str).str.lower())  # lower case
         df_P = df_P.apply(lambda x: None if x is 'None' else x.astype(str).str.replace("\s\s+", " "))  # Make whitespace into one space
         df_P = df_P.apply(lambda x: None if x is 'None' else x.astype(str).str.replace('[ًٌٍَُِّْٰٓ]+', ""))  # Remove تشكيل
         df_P = df_P.apply(lambda x:  None if x is 'None' else x.astype(str).str.replace('[أآإ]+', 'ا'))  # Remove arabic special char
@@ -100,16 +100,17 @@ class Preprocess:
 
     def getNumeric(self, column):
         output = []
-        try:
-            for i in column:
+        for i in column:
+            try:
                 n = re.sub('[^0-9-+.]+', '', i)
                 if len(n) == 0:
                     output.append(None)
                 else:
                     output.append(float(n))
-        except:
-            output.append(None)
+            except:
+                output.append(None)
 
+        print(output)
         return output
 
     def prepDatesAndValues(self, df):
@@ -119,13 +120,17 @@ class Preprocess:
         freq_val = 1 if freq_val.__contains__('YEAR') or freq_val.__contains__('ANNUAL') else 0
 
         # convert obs_value_p to numeric values
+        print('Here1')
         df['OBS_VALUE_P'] = pd.to_numeric(self.getNumeric(df['OBS_VALUE_P']))
 
         # get TIME_PERIOD_DATE_P based on TIME_PERIOD_Y_P and TIME_PERIOD_Y_P
+        print('Here2')
         if freq_val == 1:
+            print('Here3')
             df['TIME_PERIOD_Y_P'] = pd.to_numeric(self.getYear(df['TIME_PERIOD_Y_P']))
             df = df.assign(TIME_PERIOD_DATE_P=self.getDate(year_list=df['TIME_PERIOD_Y_P']))
         else:
+            print('Here4')
             df['TIME_PERIOD_M_P'] = self.getMonth(df['TIME_PERIOD_M_P'])
             df['TIME_PERIOD_Y_P'] = pd.to_numeric(self.getYear(df['TIME_PERIOD_Y_P']))
             df = df.assign(TIME_PERIOD_DATE_P=self.getDate(df['TIME_PERIOD_M_P'], df['TIME_PERIOD_Y_P']))

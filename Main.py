@@ -169,15 +169,15 @@ for file in list_of_files:
         df_old = prep.initialPrep(df_old)
         ref_dict = prep.initialPrep(ref_dict)
 
-        # PRED DISCREPANCIES CHECK
-        print('____________________________PredDisc____________________________')
-        PredDisc = prep.getPredDiscrepancies(df_curr, df_old)
-        excelHandlerForOutput.saveDFtoExcel('predecessor discrepancies', PredDisc)
-
         # PREP DATES AND NUMBER VALUES
         print('____________________________date and obs prep____________________________')
         relational_data = prep.prepDatesAndValues(df_curr)
         reports = Reports(relational_data)
+
+        # PRED DISCREPANCIES CHECK
+        print('____________________________PredDisc____________________________')
+        PredDisc = prep.getPredDiscrepancies(df_curr, df_old)
+        excelHandlerForOutput.saveDFtoExcel('predecessor discrepancies', PredDisc)
 
         # GET GOOD AND BAD ROWS AND OUTPUT TO EXCEL
         print('____________________________pass fail____________________________')
@@ -195,7 +195,7 @@ for file in list_of_files:
         print('____________________________changes____________________________')
         diff, freq = reports.changes()
         excelHandlerForOutput.saveDFtoExcel('frequency', freq)
-        excelHandlerForOutput.saveDFtoExcel('changes', freq)
+        excelHandlerForOutput.saveDFtoExcel('changes', diff)
 
         # GET TOTALS REPORT
         print('____________________________Total____________________________')
@@ -203,9 +203,10 @@ for file in list_of_files:
         excelHandlerForOutput.saveDFtoExcel('total', total)
         excelHandlerForOutput.closeWriter()
 
-    except:
+    except Exception as e:
         #TODO delete file
         print('Reporting failed')
+        print(e)
         excelHandlerForOutput.closeWriter()
 
     db.closeConnection()

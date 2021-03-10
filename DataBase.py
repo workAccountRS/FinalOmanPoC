@@ -219,6 +219,18 @@ class DB:
         df_old = df_all[df_all.TIME_STAMP != time_stamp].reset_index(drop=True)
         return df_new, df_old
 
+    def getLatestTimeStamp(self,selctedTable):
+        db = cx_Oracle.connect('{0}/{1}@{2}:{3}/{4}'.format(config.username,
+                                                            config.password,
+                                                            config.dsn,
+                                                            config.port,
+                                                            config.SERVICE_NAME))
+        SQL = """select * from (select time_stamp from {0} order by time_stamp desc) where rownum = 1""".format(selctedTable)
+        cursor = db.cursor()
+        for row in cursor.execute(SQL):
+            return row
+
+
     def closeConnection(self):
         # release the connection
         if self.connection:
