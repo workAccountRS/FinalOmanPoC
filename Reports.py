@@ -74,7 +74,9 @@ class Reports:
         return diff, freq
 
     def totals_new(self, ref_dict):
-        #TODO add if parent id is null return total not applicable
+        if ref_dict['P_ID'].isnull().all():
+            return pd.DataFrame({'MESSAGE': ['Totals not applicable']})
+
         full_table = self.table
         ref_dict_en = ref_dict['CL_ID_P'].apply(lambda x: not str(x).__contains__('ar'))
         ref_dict_en = ref_dict[ref_dict_en]

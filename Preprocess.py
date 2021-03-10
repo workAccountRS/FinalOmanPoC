@@ -151,7 +151,7 @@ class Preprocess:
 
             joint_table = curr_table.append(old_table, ignore_index=True)
             PredDisc = joint_table.drop_duplicates(subset=columns_P, keep=False)
-            #PredDisc = PredDisc[columns_output]
+            PredDisc = PredDisc[columns_output]
 
             if PredDisc.empty:
                 PredDisc = pd.DataFrame({'MESSAGE': ['No predecessor discrepancies']})
