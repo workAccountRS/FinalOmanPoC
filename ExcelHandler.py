@@ -88,5 +88,6 @@ class ExcelHandler:
             key = wb.create_sheet()
             key.title = value
 
+        sheet = wb['Sheet']
+        wb.remove(sheet)
         wb.save(filename=filename)
-        #wb.save(filename="output.xlsx")

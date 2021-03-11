@@ -1,4 +1,5 @@
 import pandas as pd
+import re
 
 
 class Reports:
@@ -26,17 +27,36 @@ class Reports:
                 if not i.upper().__contains__('_AR_'):
                     self.lookups_en.append(i)
 
-        self.group_list = self.lookups_en + [self.values, self.date]
+    def minmax(self, ref_dict):
+        # create a dictionary having parents 'CL_ID_P','ID_P','DESCRIPTION_P'
+        en_dict = ref_dict[~ref_dict['CL_ID_P'].str.contains('ar')]
+        parentDF = en_dict.dropna(subset=['P_ID_P'])[['CL_ID_P', 'P_ID_P']].drop_duplicates()
+        parentDF = parentDF.merge(en_dict[['CL_ID_P', 'ID_P', 'DESCRIPTION_P']], how='left',
+                                  left_on=['CL_ID_P', 'P_ID_P'], right_on=['CL_ID_P', 'ID_P'])
 
-    def minmax(self):
-        temp_list = [self.table.OBS_VALUE_P.idxmin(), self.table.OBS_VALUE_P.idxmax()]
-        min_max = self.table.iloc[temp_list].sort_values(by=self.values)
+        mask = pd.DataFrame()
+        for i in en_dict['CL_ID_P'].str.upper().unique():
+            print(i)
+            col_name = i+'_P'
+            desc_list = parentDF[parentDF['CL_ID_P'].str.upper() == i]['DESCRIPTION_P'].tolist()
+            mask[col_name] = self.table[col_name].isin(desc_list)
+
+        full_mask = ~mask.any(axis=1)
+
+        childrenDF = self.table.assign(mask=full_mask)
+        childrenDF = childrenDF[childrenDF['mask'] == True].drop(columns='mask').reset_index(drop=True)
+
+        temp_list = [childrenDF.OBS_VALUE_P.idxmin(), childrenDF.OBS_VALUE_P.idxmax()] # Get index of min and max value
+        min_max = childrenDF.iloc[temp_list].sort_values(by=self.values) # get rows having min max index
+
+        # design output
         return_cols = self.time_period + self.lookups + ['OBS_VALUE', 'MIN/MAX']
-        min_max.insert(len(return_cols) - 1, 'MIN/MAX', ['Minimum', 'Maximum'], True)
+        min_max.insert(len(return_cols) - 1, 'MIN/MAX', ['Minimum', 'Maximum'], True) #Add column with min max tag
 
-        return min_max[return_cols]
+        return min_max
 
     def changes(self):
+        group_list = self.lookups_en + [self.values, self.date,'MEASURE_ID_P']
         # IF ONLY ONE PERIOD AVAILABLE RETURN MESSAGE
         if len(set(self.table[self.date])) == 1:
             diff = pd.DataFrame({'MESSAGE': ['Only one time period changes not applicable']})
@@ -44,8 +64,8 @@ class Reports:
             return diff, freq
 
         # GET DIFFERENCE AND PERCENTAGE DIFFERENCE
-        order_list = self.lookups_en + [self.date]
-        diff = self.table[self.group_list].sort_values(by=order_list).reset_index(drop=True)
+        order_list = self.lookups_en + ['MEASURE_ID_P', self.date]
+        diff = self.table[group_list].sort_values(by=order_list).reset_index(drop=True)
         diff = diff.assign(FREQUENCY=None, DIFFERENCE=None, PERCENT_DIFFERENCE=None)
 
         for i in range(len(diff) - 1):
@@ -69,12 +89,11 @@ class Reports:
 
         order_list = [self.date] + self.lookups_en
         diff = diff.sort_values(by=order_list).reset_index(drop=True)
-        freq = diff.drop_duplicates(subset=[self.date, 'FREQUENCY'])
+        freq = diff[[self.date, 'FREQUENCY']].drop_duplicates(subset=[self.date, 'FREQUENCY'])
 
         return diff, freq
 
     def totals_new(self, ref_dict):
-        print(ref_dict['P_ID_P'])
         if ref_dict['P_ID'].isnull().all():
             return pd.DataFrame({'MESSAGE': ['Totals not applicable']})
 
@@ -100,11 +119,9 @@ class Reports:
             group_by_list = group_by[:]
             group_by_list.remove(i)
             group_by_list.append(i.replace('_ID', '_ParentID'))
-            print(group_by_list)
             temp2 = full_table.groupby(group_by_list+group_fixed).agg({'OBS_VALUE_P': "sum"}).reset_index()
             temp2.columns = [i.replace('_ParentID', '_ID') for i in temp2.columns]
             actual_totals = actual_totals.append(temp2, ignore_index=True)
-            print(actual_totals)
 
         on = [i for i in actual_totals.columns if not i.__contains__('OBS')]
 
@@ -124,9 +141,7 @@ class Reports:
             PredDisc = pd.DataFrame({'MESSAGE': ['No previously inserted data for this table']})
         else:
             columns_P = [i for i in old_table.columns if i.upper().endswith('_P')]
-            print(columns_P)
             columns_output = [i for i in old_table.columns if not i.upper().endswith('_P')]
-            print(columns_output)
 
             joint_table = curr_table.append(old_table, ignore_index=True)
             PredDisc = joint_table.drop_duplicates(subset=columns_P, keep=False)
