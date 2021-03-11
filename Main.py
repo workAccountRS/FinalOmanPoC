@@ -188,7 +188,7 @@ for file in list_of_files:
 
         # GET MIN MAX
         print('____________________________min max____________________________')
-        min_max = reports.minmax()
+        min_max = reports.minmax(ref_dict)
         excelHandlerForOutput.saveDFtoExcel('min_max', min_max)
 
         # GET DIFFERENCE AND PERCENTAGE DIFFERENCE
