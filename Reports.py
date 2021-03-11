@@ -28,32 +28,42 @@ class Reports:
                     self.lookups_en.append(i)
 
     def minmax(self, ref_dict):
-        # create a dictionary having parents 'CL_ID_P','ID_P','DESCRIPTION_P'
-        en_dict = ref_dict[~ref_dict['CL_ID_P'].str.contains('ar')]
-        parentDF = en_dict.dropna(subset=['P_ID_P'])[['CL_ID_P', 'P_ID_P']].drop_duplicates()
-        parentDF = parentDF.merge(en_dict[['CL_ID_P', 'ID_P', 'DESCRIPTION_P']], how='left',
-                                  left_on=['CL_ID_P', 'P_ID_P'], right_on=['CL_ID_P', 'ID_P'])
+        if ref_dict['P_ID'].isnull().all():
+            childrenDF = self.table
 
-        mask = pd.DataFrame()
-        for i in en_dict['CL_ID_P'].str.upper().unique():
-            print(i)
-            col_name = i+'_P'
-            desc_list = parentDF[parentDF['CL_ID_P'].str.upper() == i]['DESCRIPTION_P'].tolist()
-            mask[col_name] = self.table[col_name].isin(desc_list)
+        else:
+            en_dict = ref_dict.dropna(subset=['CL_ID_P'], axis=0)
+            # create a dictionary having parents 'CL_ID_P','ID_P','DESCRIPTION_P'
+            en_dict = en_dict[~en_dict['CL_ID_P'].str.contains('ar')]
+            print(en_dict)
+            parentDF = en_dict.dropna(subset=['P_ID_P'])[['CL_ID_P', 'P_ID_P']].drop_duplicates()
+            parentDF = parentDF.merge(en_dict[['CL_ID_P', 'ID_P', 'DESCRIPTION_P']], how='left',
+                                      left_on=['CL_ID_P', 'P_ID_P'], right_on=['CL_ID_P', 'ID_P'])
+            print(parentDF)
+            mask = pd.DataFrame()
 
-        full_mask = ~mask.any(axis=1)
+            for i in en_dict['CL_ID_P'].str.upper().unique():
+                print(i)
+                col_name = i+'_P'
+                desc_list = parentDF[parentDF['CL_ID_P'].str.upper() == i]['DESCRIPTION_P'].tolist()
+                mask[col_name] = self.table[col_name].isin(desc_list)
+            print(mask)
+            full_mask = ~mask.any(axis=1)
+            print(full_mask)
 
-        childrenDF = self.table.assign(mask=full_mask)
-        childrenDF = childrenDF[childrenDF['mask'] == True].drop(columns='mask').reset_index(drop=True)
+            childrenDF = self.table.assign(mask=full_mask)
+            childrenDF = childrenDF[childrenDF['mask'] == True].drop(columns='mask').reset_index(drop=True)
+            print(childrenDF)
 
         temp_list = [childrenDF.OBS_VALUE_P.idxmin(), childrenDF.OBS_VALUE_P.idxmax()] # Get index of min and max value
+        print(temp_list)
         min_max = childrenDF.iloc[temp_list].sort_values(by=self.values) # get rows having min max index
 
         # design output
         return_cols = self.time_period + self.lookups + ['OBS_VALUE', 'MIN/MAX']
         min_max.insert(len(return_cols) - 1, 'MIN/MAX', ['Minimum', 'Maximum'], True) #Add column with min max tag
 
-        return min_max
+        return min_max[return_cols]
 
     def changes(self):
         group_list = self.lookups_en + [self.values, self.date,'MEASURE_ID_P']
@@ -98,28 +108,36 @@ class Reports:
             return pd.DataFrame({'MESSAGE': ['Totals not applicable']})
 
         full_table = self.table
-        ref_dict_en = ref_dict['CL_ID_P'].apply(lambda x: not str(x).__contains__('ar'))
-        ref_dict_en = ref_dict[ref_dict_en]
+        ref_dict_en = ref_dict.dropna(subset=['CL_ID_P'], axis=0)
+        ref_dict_en = ref_dict_en[~ref_dict_en['CL_ID_P'].str.contains('ar')]
 
         lookups = [i for i in self.lookups_en if i.upper().endswith('_P')]
 
-        group_by = []
+        groupby_fixed = []
+        sum_by = []
         for i in lookups:
+            # GET LOOKUP i DESCRIPTION_P FROM RELATIONAL TABLE
             temp = pd.DataFrame({'DESCRIPTION_P': self.table[i]})
+            # TEMP IS {'DESCRIPTION_P': self.table[i],'CL_ID_P' : i-'_P' }
             temp = temp.assign(CL_ID_P=i[:-2].lower())
             temp = temp.merge(ref_dict_en[['CL_ID_P', 'DESCRIPTION_P', 'ID_P', 'P_ID_P']],
                               on=['CL_ID_P', 'DESCRIPTION_P'], how='left')
-            full_table[i + '_ID'] = temp['ID_P']
-            full_table[i + '_ParentID'] = temp['P_ID_P']
-            group_by.append(i + '_ID')
+            if temp['P_ID_P'].isnull().all():
+                groupby_fixed.append(i)
+            else:
+                full_table[i + '_ID'] = temp['ID_P']
+                full_table[i + '_ParentID'] = temp['P_ID_P']
+                sum_by.append(i + '_ID')
 
-        actual_totals = pd.DataFrame(columns=group_by+['OBS_VALUE_P'])
-        group_fixed = self.time_period +['MEASURE_ID_P']
-        for i in group_by:
-            group_by_list = group_by[:]
-            group_by_list.remove(i)
-            group_by_list.append(i.replace('_ID', '_ParentID'))
-            temp2 = full_table.groupby(group_by_list+group_fixed).agg({'OBS_VALUE_P': "sum"}).reset_index()
+        actual_totals = pd.DataFrame(columns=groupby_fixed+sum_by+['OBS_VALUE_P'])
+        groupby_fixed = groupby_fixed + self.time_period + ['MEASURE_ID_P']
+        for i in sum_by:
+            sum_by_list = sum_by[:]
+            sum_by_list.remove(i)
+            sum_by_list.append(i.replace('_ID', '_ParentID'))
+            print(sum_by_list + groupby_fixed)
+            temp2 = full_table.groupby(sum_by_list+groupby_fixed).agg({'OBS_VALUE_P': "sum"}).reset_index()
+            print(temp2)
             temp2.columns = [i.replace('_ParentID', '_ID') for i in temp2.columns]
             actual_totals = actual_totals.append(temp2, ignore_index=True)
 
