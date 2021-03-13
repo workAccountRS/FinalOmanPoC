@@ -10,7 +10,8 @@ class Preprocess:
     # THIS FUNCTION WILL RETURN ORG_DF+PREPROC_DF HAVING PREPROCESSED TEXT FOR ALL COLUMNS
     # PREPROCESSED COLUMNS ARE DEFINED BY APPENDING '_P' TO ORIGINAL NAME
     def initialPrep(self,df):
-        df_P = df.apply(lambda x: None if x is 'None' else x.astype(str).str.strip())  # Strip L and R space
+        df_P = df.dropna(how='all') # drop rows having all None values
+        df_P = df_P.apply(lambda x: None if x is 'None' else x.astype(str).str.strip())  # Strip L and R space
         df_P = df_P.apply(lambda x: None if x is 'None' else x.astype(str).str.lower())  # lower case
         df_P = df_P.apply(lambda x: None if x is 'None' else x.astype(str).str.replace("\s\s+", " "))  # Make whitespace into one space
         df_P = df_P.apply(lambda x: None if x is 'None' else x.astype(str).str.replace('[ًٌٍَُِّْٰٓ]+', ""))  # Remove تشكيل
@@ -61,6 +62,7 @@ class Preprocess:
 
         pattern = '|'.join([*month_dict.keys()]) + '|'.join(set(month_dict.values()))
         allmonths = [self.matchPattern(i, pattern) for i in column]
+        print(allmonths)
 
         output = []
         for i in allmonths:
@@ -68,7 +70,7 @@ class Preprocess:
                 output.append(month_dict[i])
             else:
                 output.append(i)
-
+        print(output)
         return output
 
     def getYear(self, column):
@@ -77,25 +79,27 @@ class Preprocess:
             try:
                 extractYear = re.search(r'\d{4}', i)
                 y = extractYear.group(0)
-                output.append(y)
+                output.append(int(y))
             except:
-                output.append(None)
+                    output.append(None)
+        print(output)
         return output
 
     def getDate(self, month_list=None, year_list=[]):
         if month_list is not None:
             date = []
             for i in range(len(month_list)):
-                try:
-                    date.append(month_list[i] + '-' + str(year_list[i]))
-                except:
+                if pd.isna(year_list[i]):
                     date.append(None)
-
+                elif pd.isna(month_list[i]):
+                    date.append(str(year_list[i]))
+                else:
+                    date.append(month_list[i] + '-' + str(year_list[i]))
             output = pd.to_datetime(date, errors='coerce')
 
         else:
             output = pd.to_datetime(year_list, format='%Y', errors='coerce')
-
+        print(output)
         return output
 
     def getNumeric(self, column):
@@ -120,20 +124,17 @@ class Preprocess:
         freq_val = 1 if freq_val.__contains__('YEAR') or freq_val.__contains__('ANNUAL') else 0
 
         # convert obs_value_p to numeric values
-        print('Here1')
         df['OBS_VALUE_P'] = pd.to_numeric(self.getNumeric(df['OBS_VALUE_P']))
 
         # get TIME_PERIOD_DATE_P based on TIME_PERIOD_Y_P and TIME_PERIOD_Y_P
-        print('Here2')
         if freq_val == 1:
-            print('Here3')
-            df['TIME_PERIOD_Y_P'] = pd.to_numeric(self.getYear(df['TIME_PERIOD_Y_P']))
-            df = df.assign(TIME_PERIOD_DATE_P=self.getDate(year_list=df['TIME_PERIOD_Y_P']))
+            df = df.assign(TIME_PERIOD_DATE_P=self.getDate(year_list=self.getYear(df['TIME_PERIOD_Y_P'])))
+            df['TIME_PERIOD_Y_P'] = self.getYear(df['TIME_PERIOD_Y_P'])
         else:
             print('Here4')
             df['TIME_PERIOD_M_P'] = self.getMonth(df['TIME_PERIOD_M_P'])
-            df['TIME_PERIOD_Y_P'] = pd.to_numeric(self.getYear(df['TIME_PERIOD_Y_P']))
-            df = df.assign(TIME_PERIOD_DATE_P=self.getDate(df['TIME_PERIOD_M_P'], df['TIME_PERIOD_Y_P']))
+            df = df.assign(TIME_PERIOD_DATE_P=self.getDate(df['TIME_PERIOD_M_P'], self.getYear(df['TIME_PERIOD_Y_P'])))
+            df['TIME_PERIOD_Y_P'] = self.getYear(df['TIME_PERIOD_Y_P'])
 
         # get PUBLICATION_DATE_AR_P and PUBLICATION_DATE_EN_P
         df = df.assign(PUBLICATION_DATE_AR_P=

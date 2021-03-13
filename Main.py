@@ -186,6 +186,11 @@ for file in list_of_files:
         excelHandlerForOutput.saveDFtoExcel('fail', df_fail)
         excelHandlerForOutput.saveDFtoExcel('pass', df_pass)
 
+        # GET MISSING LOOKUPS
+        print('____________________________PredDisc____________________________')
+        missingCL = reports.CLCoverage(ref_dict)
+        excelHandlerForOutput.saveDFtoExcel('missing lookups', missingCL)
+
         # GET MIN MAX
         print('____________________________min max____________________________')
         min_max = reports.minmax(ref_dict)
@@ -210,3 +215,4 @@ for file in list_of_files:
         excelHandlerForOutput.closeWriter()
 
     db.closeConnection()
+

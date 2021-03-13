@@ -17,6 +17,7 @@ class Table:
 
         if self.freq.__contains__('YEAR') or self.freq.__contains__('ANNUAL'):
             self.columns.remove('TIME_PERIOD_M')
+            self.columns.remove('TIME_PERIOD_M_P')
 
 
     def table_rules(self, row):
@@ -30,22 +31,29 @@ class Table:
         lookups = self.lookups
         iter_over = [i for i in self.columns if i.upper().endswith('_P')]
         for item in iter_over:
-            if item.upper() in ['PUBLICATION_DATE_EN_P','PUBLICATION_DATE_AR_P','TIME_PERIOD_DATE_P', 'OBS_VALUE_P']:
+            if item.upper()[:-2] in self.optionalColumns + ['TIME_PERIOD_DATE']:
                 continue
 
-            elif input[item] is None:
-                org = item[:-2].upper()
-                if input[org] is None:
-                    continue
-                else:
-                    output['invalid input'].append(org)
+            elif item.upper() in ['PUBLICATION_DATE_EN_P','PUBLICATION_DATE_AR_P']:
+                if pd.isna(input[item]):
+                    if pd.isna(input[item[:-2]]):
+                        output['isnull'].append(item[:-2])
+                    else:
+                        output['invalid input'].append(item[:-2])
+
+            elif item.upper in ['TIME_PERIOD_Y_P', 'TIME_PERIOD_M_P']:
+                if pd.isna(input[item]):
+                    if pd.isna(input[item[:-2]]):
+                        output['isnull'].append(item[:-2])
+                    else:
+                        output['invalid input'].append(item[:-2])
 
             else:
                 # CHECK NULL AND TEXT TYPE
                 if rules.notnull(input[item[:-2]]):
                     # CHECK DATA TYPE
                     dataType = 'text'
-                    if str(item).upper() == 'TIME_PERIOD_Y_P':
+                    if str(item).upper() in ['TIME_PERIOD_Y_P','OBS_VALUE_P']:
                         dataType = 'number'
 
                     if not rules.data_type(input[item], dataType):

@@ -27,15 +27,43 @@ class Reports:
                 if not i.upper().__contains__('_AR_'):
                     self.lookups_en.append(i)
 
+    def CLCoverage(self, ref_dict):
+        prepCLs = [i for i in self.lookups if i.endswith('_P')]
+        lookupDF = self.table[prepCLs]
+
+        missing = {'Missing CL_ID':[],'Missing Description':[]}
+        for i in prepCLs:
+            dist_list = lookupDF[i].dropna().unique()
+            print('list',dist_list)
+            lookup_list = ref_dict[ref_dict['CL_ID_P']==i[:-2].lower()]['DESCRIPTION_P'].tolist()
+            print('check', lookup_list)
+
+            for j in dist_list:
+                if j not in lookup_list:
+                    missing['Missing CL_ID'].append(i)
+                    missing['Missing Description'].append(j)
+
+        missing = pd.DataFrame(missing)
+        return missing
+
     def minmax(self, ref_dict):
+        """
+        Min max function returns a dict having the minimum and maximum values of each measure for the latest
+        statistical period (TIME_PERIOD_Y,TIME_PERIOD_M). The values being considered are the OBS_VAL values
+        after being casted to float values. Nulls are ignored.
+        The function excludes total values (filtered using parent child information in ref_dictionary, any parent value
+        is excluded from calculation)
+        """
+        # no totals to be consider in the statistical sheet (no parent lookup values)
         if ref_dict['P_ID'].isnull().all():
             childrenDF = self.table
 
+        # else: exclude parent values
         else:
+            # get all english lookups
             en_dict = ref_dict.dropna(subset=['CL_ID_P'], axis=0)
-            # create a dictionary having parents 'CL_ID_P','ID_P','DESCRIPTION_P'
             en_dict = en_dict[~en_dict['CL_ID_P'].str.contains('ar')]
-            print(en_dict)
+            # get a dict with only the parent lookups
             parentDF = en_dict.dropna(subset=['P_ID_P'])[['CL_ID_P', 'P_ID_P']].drop_duplicates()
             parentDF = parentDF.merge(en_dict[['CL_ID_P', 'ID_P', 'DESCRIPTION_P']], how='left',
                                       left_on=['CL_ID_P', 'P_ID_P'], right_on=['CL_ID_P', 'ID_P'])
@@ -55,6 +83,13 @@ class Reports:
             childrenDF = childrenDF[childrenDF['mask'] == True].drop(columns='mask').reset_index(drop=True)
             print(childrenDF)
 
+        # CHECK WHICH FREQUENCY IS NEEDED AND GET MAX PERIOD
+
+
+        # GROUP BY TO GET OUTPUT
+        # temp2 = childrenDF.groupby(
+        #                            ).agg({'OBS_VALUE_P': "sum"}).reset_index()
+
         temp_list = [childrenDF.OBS_VALUE_P.idxmin(), childrenDF.OBS_VALUE_P.idxmax()] # Get index of min and max value
         print(temp_list)
         min_max = childrenDF.iloc[temp_list].sort_values(by=self.values) # get rows having min max index
@@ -64,6 +99,45 @@ class Reports:
         min_max.insert(len(return_cols) - 1, 'MIN/MAX', ['Minimum', 'Maximum'], True) #Add column with min max tag
 
         return min_max[return_cols]
+
+
+    # def minmax(self, ref_dict):
+    #     if ref_dict['P_ID'].isnull().all():
+    #         childrenDF = self.table
+    #
+    #     else:
+    #         en_dict = ref_dict.dropna(subset=['CL_ID_P'], axis=0)
+    #         # create a dictionary having parents 'CL_ID_P','ID_P','DESCRIPTION_P'
+    #         en_dict = en_dict[~en_dict['CL_ID_P'].str.contains('ar')]
+    #         print(en_dict)
+    #         parentDF = en_dict.dropna(subset=['P_ID_P'])[['CL_ID_P', 'P_ID_P']].drop_duplicates()
+    #         parentDF = parentDF.merge(en_dict[['CL_ID_P', 'ID_P', 'DESCRIPTION_P']], how='left',
+    #                                   left_on=['CL_ID_P', 'P_ID_P'], right_on=['CL_ID_P', 'ID_P'])
+    #         print(parentDF)
+    #         mask = pd.DataFrame()
+    #
+    #         for i in en_dict['CL_ID_P'].str.upper().unique():
+    #             print(i)
+    #             col_name = i+'_P'
+    #             desc_list = parentDF[parentDF['CL_ID_P'].str.upper() == i]['DESCRIPTION_P'].tolist()
+    #             mask[col_name] = self.table[col_name].isin(desc_list)
+    #         print(mask)
+    #         full_mask = ~mask.any(axis=1)
+    #         print(full_mask)
+    #
+    #         childrenDF = self.table.assign(mask=full_mask)
+    #         childrenDF = childrenDF[childrenDF['mask'] == True].drop(columns='mask').reset_index(drop=True)
+    #         print(childrenDF)
+    #
+    #     temp_list = [childrenDF.OBS_VALUE_P.idxmin(), childrenDF.OBS_VALUE_P.idxmax()] # Get index of min and max value
+    #     print(temp_list)
+    #     min_max = childrenDF.iloc[temp_list].sort_values(by=self.values) # get rows having min max index
+    #
+    #     # design output
+    #     return_cols = self.time_period + self.lookups + ['OBS_VALUE', 'MIN/MAX']
+    #     min_max.insert(len(return_cols) - 1, 'MIN/MAX', ['Minimum', 'Maximum'], True) #Add column with min max tag
+    #
+    #     return min_max[return_cols]
 
     def changes(self):
         group_list = self.lookups_en + [self.values, self.date,'MEASURE_ID_P']
@@ -147,10 +221,12 @@ class Reports:
 
         totals = actual_totals.merge(full_table,on=on, how='left', suffixes=('_L', '_R'))
 
-        out_cols = self.lookups + self.time_period + ['OBS_VALUE_P_L','OBS_VALUE_P_R']
+        totals['CALCULATED - TOTALS'] = totals['OBS_VALUE_P_L'] - totals['OBS_VALUE_P_R']
+
+        out_cols = self.lookups + self.time_period + ['OBS_VALUE_P_L','OBS_VALUE_P_R','CALCULATED - TOTALS']
         totals = totals[out_cols]
 
-        totals = totals.rename(columns = {'OBS_VALUE_P_L': 'ACTUAL TOTALS', 'OBS_VALUE_P_R': 'REPORTED TOTALS'}, inplace = False)
+        totals = totals.rename(columns={'OBS_VALUE_P_L': 'CALCULATED TOTALS', 'OBS_VALUE_P_R': 'REPORTED TOTALS'}, inplace = False)
 
         return totals
 
