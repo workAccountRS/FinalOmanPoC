@@ -120,9 +120,12 @@ for file in list_of_files:
     from Preprocess import Preprocess
     from Reports import Reports
     import tableChecks
+
     import pandas as pd
 
-    pd.set_option('display.max_columns', None)
+    pd.set_option('display.max_rows', None)
+
+    currentTime = '11/03/2021 12:51:36'
 
     formattedTime = str(currentTime).replace('/', '-').replace(':', '').replace(' ', '_')
     outputFile = 'Validation_{0}_{1}.xlsx'.format(pdfFileName, formattedTime)
@@ -147,10 +150,13 @@ for file in list_of_files:
 
     # PRED DISCREPANCIES CHECK
     print('____________________________PredDisc____________________________')
-    PredDisc = reports.getPredDiscrepancies(df_curr,df_old)
+    PredDisc = prep.getPredDiscrepancies(df_curr, df_old)
     excelHandlerForOutput.saveDFtoExcel('predecessor discrepancies', PredDisc)
 
-
+    # PRED DISCREPANCIES CHECK
+    print('____________________________PredDisc____________________________')
+    PredDisc = prep.getPredDiscrepancies(df_curr, df_old)
+    excelHandlerForOutput.saveDFtoExcel('predecessor discrepancies', PredDisc)
 
     # GET GOOD AND BAD ROWS AND OUTPUT TO EXCEL
     print('____________________________pass fail____________________________')
@@ -161,7 +167,7 @@ for file in list_of_files:
 
     # GET MIN MAX
     print('____________________________min max____________________________')
-    min_max = reports.minmax()
+    min_max = reports.minmax(ref_dict)
     excelHandlerForOutput.saveDFtoExcel('min_max', min_max)
 
     # GET DIFFERENCE AND PERCENTAGE DIFFERENCE
@@ -171,8 +177,9 @@ for file in list_of_files:
     excelHandlerForOutput.saveDFtoExcel('changes', diff)
 
     # GET TOTALS REPORT
+    print('____________________________Total____________________________')
     total = reports.totals_new(ref_dict)
     excelHandlerForOutput.saveDFtoExcel('total', total)
-
     excelHandlerForOutput.closeWriter()
+
     db.closeConnection()

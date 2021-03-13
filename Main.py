@@ -6,6 +6,7 @@ import Utilities
 import time
 from DataBase import DB
 import ExcelToPDF
+import pandas as pd
 
 directory = os.path.abspath('.')
 path = directory + "\\Input\\*.xlsx"
@@ -48,6 +49,25 @@ for file in list_of_files:
     skipedRows = []
     errors = []
 
+    # BULK INSERT
+    relational_db = pd.read_excel(InputFileName, sheet_name='Relational DB', header=1, skiprows=[2])
+    ref_dictionary = pd.read_excel(InputFileName, sheet_name='Ref_Dictionary', header=1, skiprows=[2])
+    s2t_mapping = pd.read_excel(InputFileName, sheet_name='S2T Mapping', header=1, skiprows=[2])
+
+    db.newInsert(relational_db)
+
+
+
+    # @event.listens_for(engine, "before_cursor_execute")
+    # def receive_before_cursor_execute(
+    #         conn, cursor, statement, params, context, executemany
+    # ):
+    #     if executemany:
+    #         cursor.fast_executemany = True
+    #
+    #
+    # df.to_sql(tbl, engine, index=False, if_exists="append", schema="dbo")
+
     # LOOP THROUGH THE MAP
     for rowNumber in range(2, excelHandler.getMaxRow(sheet='S2T Mapping') + 1):
         currentRowData = excelHandler.getRowDataFromSheet(sheet='S2T Mapping', row=rowNumber)
@@ -65,8 +85,8 @@ for file in list_of_files:
             skipedRows.append(rowNumber)
             continue
 
-        if isFirstRun:
-            db.insertDynamicTable(tableName=db.s2t_mapping, columns=s2tColumns, values=currentRowData)
+        # if isFirstRun:
+        #     db.insertDynamicTable(tableName=db.s2t_mapping, columns=s2tColumns, values=currentRowData)
 
         source_data = excelHandler.getCellFromSheet(sheet=str(sheet_source), cell=cell_source)
         target_data = excelHandler.getCellFromSheet(sheet=str(sheet_target), cell=cell_target)
@@ -97,8 +117,8 @@ for file in list_of_files:
             # db.insertIntoLandingDB(sheetSource=sheet_source, cellSource=cell_source, cellContent=source_data,
             #                        TimeStamp=currentTime, BatchID=BatchID)
 
-            db.insertDynamicTable(tableName=db.landing_db, columns=landingDBColumns,
-                                  values=[sheet_source, cell_source, source_data, currentTime, str(BatchID)])
+            # db.insertDynamicTable(tableName=db.landing_db, columns=landingDBColumns,
+            #                       values=[sheet_source, cell_source, source_data, currentTime, str(BatchID)])
 
         # except Exception as e:
         #     print("ERROR IN ROW#" + str(rowNumber) + " -- " + str(e))
@@ -116,12 +136,12 @@ for file in list_of_files:
 
         currentRowData = excelHandler.getRowDataFromSheet(sheet='Relational DB', row=rowNumber)
 
-        db.insertDynamicTable(tableName=db.relational_db, columns=relationalColumns, values=currentRowData)
+        #db.insertDynamicTable(tableName=db.relational_db, columns=relationalColumns, values=currentRowData)
 
     if isFirstRun:
         for rowNumber in range(2, excelHandler.getMaxRow(sheet='Ref_Dictionary') + 1):
             currentRowData = excelHandler.getRowDataFromSheet(sheet='Ref_Dictionary', row=rowNumber)
-            db.insertDynamicTable(tableName=db.ref_dictionary, columns=refDictionaryColumns, values=currentRowData)
+            #db.insertDynamicTable(tableName=db.ref_dictionary, columns=refDictionaryColumns, values=currentRowData)
 
     excelHandler.saveSpreadSheet(fileName=InputFileName)
 
