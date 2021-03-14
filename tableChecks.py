@@ -31,7 +31,7 @@ class Table:
         lookups = self.lookups
         iter_over = [i for i in self.columns if i.upper().endswith('_P')]
         for item in iter_over:
-            if item.upper()[:-2] in self.optionalColumns + ['TIME_PERIOD_DATE']:
+            if item.upper()[:-2] in ['TIME_PERIOD_DATE']:
                 continue
 
             elif item.upper() in ['PUBLICATION_DATE_EN_P','PUBLICATION_DATE_AR_P']:
