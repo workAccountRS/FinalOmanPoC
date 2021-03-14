@@ -23,6 +23,7 @@ for file in list_of_files:
     InputFileName = file
     excelHandler = ExcelHandler(fileName=InputFileName)
     pdfFileName = excelHandler.getCellFromSheet(sheet='Cover page', cell='B5')
+    freq = excelHandler.getCellFromSheet(sheet='Cover page', cell='B8').strip().lower()
     tablePostFix = '_{0}'.format(pdfFileName)
 
     db = DB(landing_db='landing_db' + tablePostFix, relational_db='relational_db' + tablePostFix,
@@ -129,7 +130,7 @@ for file in list_of_files:
         excelHandler.writeCell(sheet='Relational DB', cell=str(str(cell[1]) + str(rowNumber)), value=str(BatchID))
 
         currentRowData = excelHandler.getRowDataFromSheet(sheet='Relational DB', row=rowNumber)
-
+        currentRowData = [str(i) for i in currentRowData]
         # db.insertDynamicTable(tableName=db.relational_db, columns=relationalColumns, values=currentRowData)
         listOfTuplesRelational.append(tuple(currentRowData))
 
@@ -195,6 +196,7 @@ for file in list_of_files:
         # PREP DATES AND NUMBER VALUES
         print('____________________________date and obs prep____________________________')
         relational_data = prep.prepDatesAndValues(df_curr)
+        print('here')
         reports = Reports(relational_data)
 
         # PRED DISCREPANCIES CHECK
@@ -216,7 +218,7 @@ for file in list_of_files:
 
         # GET MIN MAX
         print('____________________________min max____________________________')
-        min_max = reports.minmax(ref_dict)
+        min_max = reports.minmax(ref_dict, freq)
         excelHandlerForOutput.saveDFtoExcel('min_max', min_max)
 
         # GET DIFFERENCE AND PERCENTAGE DIFFERENCE
@@ -238,7 +240,5 @@ for file in list_of_files:
         print('Reporting failed')
         print(e)
         excelHandlerForOutput.closeWriter()
-
-
 
     db.closeConnection()

@@ -251,18 +251,3 @@ class DB:
         if self.connection:
             self.connection.commit()
             self.connection.close()
-
-    def newInsert(self, df):
-        oracle_connection_string = 'oracle+cx_oracle://{username}:{password}@{hostname}:{port}/{database}'
-
-        engine = create_engine(
-            oracle_connection_string.format(
-                username=config.username,
-                password=config.password,
-                hostname=config.dsn,
-                port=config.port,
-                database=config.SERVICE_NAME
-            )
-        )
-
-        df.to_sql('test_table', engine, index=False, if_exists='replace')
