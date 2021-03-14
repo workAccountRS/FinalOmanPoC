@@ -129,6 +129,10 @@ for file in list_of_files:
         excelHandler.writeCell(sheet='Relational DB', cell=str(str(cell[0]) + str(rowNumber)), value=currentTime)
         excelHandler.writeCell(sheet='Relational DB', cell=str(str(cell[1]) + str(rowNumber)), value=str(BatchID))
 
+        timeCount = db.getDistincTime()
+        if excelHandler.getCellFromSheet(sheet='Relational DB', cell=str(str(cell[2]) + str(rowNumber))) is None:
+            excelHandler.writeCell(sheet='Relational DB', cell=str(str(cell[2]) + str(rowNumber)), value=timeCount)
+
         currentRowData = excelHandler.getRowDataFromSheet(sheet='Relational DB', row=rowNumber)
         currentRowData = ['' if i is None else str(i) for i in currentRowData]
         # db.insertDynamicTable(tableName=db.relational_db, columns=relationalColumns, values=currentRowData)

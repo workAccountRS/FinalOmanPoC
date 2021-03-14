@@ -207,6 +207,20 @@ class DB:
             print(e)
             return
 
+    def getDistincTime(self):
+
+        sql = "select count(*) from (select distinct time_stamp from {0})".format(self.relational_db)
+        cursor = self.cursor
+        try:
+            cursor.execute(sql)
+            a = []
+            for record in cursor:
+                a.append(record)
+            return list(a[0])[0]
+        except Exception as e:
+            print(e)
+            return
+
     def printS2t(self):
         cursor = self.cursor
         SQL = "SELECT * FROM {0}".format(self.s2t_mapping)

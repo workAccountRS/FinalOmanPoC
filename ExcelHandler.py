@@ -49,7 +49,10 @@ class ExcelHandler:
                     timeStampCell = cell.coordinate[:-1]
                 if cell.value == 'Batch_ID':
                     batchIdCell = cell.coordinate[:-1]
-        return [timeStampCell, batchIdCell]
+                if cell.value == 'Data_Load':
+                    dataLoadCell = cell.coordinate[:-1]
+
+        return [timeStampCell, batchIdCell, dataLoadCell]
 
     def getCellFromSheet(self, sheet="S2T Mapping", cell="A1"):
         sheet = self.wb[sheet]
