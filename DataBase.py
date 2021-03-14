@@ -2,7 +2,6 @@ from random import Random, randrange
 import pandas as pd
 import cx_Oracle
 import config
-from sqlalchemy import create_engine
 
 
 # TODO: INSERT NULL
@@ -32,6 +31,8 @@ class DB:
             print('VERSION::', self.connection.version)
             self.cursor = self.connection.cursor()
 
+            self.cursor = self.connection.cursor()
+
 
         except cx_Oracle.Error as error:
             print('ERROR', error)
@@ -40,7 +41,7 @@ class DB:
                 self.connection.close()
 
     def printDescription(self):
-        print('-------------------landing_db------------------------')
+        print('-------------------{0}------------------------'.format(self.landing_db))
 
         sql = """SELECT * FROM {0}""".format(self.landing_db)
         cursor = self.cursor
@@ -50,9 +51,9 @@ class DB:
         for each in cursor.execute(sql):
             print(each)
 
-        print('-------------------landing_db------------------------')
+        print('-------------------{0}------------------------'.format(self.landing_db))
 
-        print('---------------------relational_db---------------------')
+        print('-------------------{0}------------------------'.format(self.relational_db))
 
         sql = """SELECT * FROM {0}""".format(self.relational_db)
         cursor = self.cursor
@@ -61,9 +62,9 @@ class DB:
         for each in cursor.description:
             print(each[0:2])
 
-        print('---------------------relational_db---------------------')
+        print('-------------------{0}------------------------'.format(self.relational_db))
 
-        print('---------------------s2t_mapping---------------------')
+        print('-------------------{0}------------------------'.format(self.s2t_mapping))
 
         sql = """SELECT * FROM {0}""".format(self.s2t_mapping)
         cursor = self.cursor
@@ -72,7 +73,7 @@ class DB:
         for each in cursor.description:
             print(each[0:2])
 
-        print('---------------------s2t_mapping---------------------')
+        print('-------------------{0}------------------------'.format(self.s2t_mapping))
 
         print('---------------------ref_dictionary---------------------')
 
@@ -132,6 +133,29 @@ class DB:
             print(e)
             return
 
+    def insertDynamicTableFast(self, tableName, columns, values):
+        columnsSQL = """"""
+        valuesSQL = """"""
+        counter = 0
+        for column in columns:
+            counter += 1
+            isLastValue = counter == len(columns)
+            columnsSQL += """{0} {1}
+                          """.format(column, ',' if not isLastValue else '')
+            # value = 'NULL' if value is None else value
+            valuesSQL += """:{0} {1}
+                                     """.format(counter, ',' if not isLastValue else '')
+        valuesSQL = valuesSQL.replace("'NULL'", "NULL")
+        sql = """INSERT INTO {0} ({1})
+                values ({2})""".format(tableName, columnsSQL, valuesSQL)
+        print(':::::', sql)
+        cursor = self.cursor
+        try:
+            cursor.executemany(sql, values)
+        except Exception as e:
+            print(e)
+            return
+
     def insertIntoLandingDB(self, sheetSource='', cellSource='', cellContent='', TimeStamp='', BatchID=''):
 
         sql = """INSERT INTO {5} (Sheet_Source,Cell_Source,Cell_Content,Time_Stamp,Batch_ID)
@@ -184,24 +208,14 @@ class DB:
             return
 
     def printS2t(self):
-        db = cx_Oracle.connect('{0}/{1}@{2}:{3}/{4}'.format(config.username,
-                                                            config.password,
-                                                            config.dsn,
-                                                            config.port,
-                                                            config.SERVICE_NAME))
-        cursor = db.cursor()
+        cursor = self.cursor
         SQL = "SELECT * FROM {0}".format(self.s2t_mapping)
         cursor.execute(SQL)
         for record in cursor:
             print('s2t_mapping', record)
 
     def printRefDictionary(self):
-        db = cx_Oracle.connect('{0}/{1}@{2}:{3}/{4}'.format(config.username,
-                                                            config.password,
-                                                            config.dsn,
-                                                            config.port,
-                                                            config.SERVICE_NAME))
-        cursor = db.cursor()
+        cursor = self.cursor
         SQL = "SELECT * FROM {0}".format(self.ref_dictionary)
         cursor.execute(SQL)
         for record in cursor:

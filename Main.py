@@ -49,24 +49,14 @@ for file in list_of_files:
     skipedRows = []
     errors = []
 
-    # BULK INSERT
-    relational_db = pd.read_excel(InputFileName, sheet_name='Relational DB', header=1, skiprows=[2])
-    ref_dictionary = pd.read_excel(InputFileName, sheet_name='Ref_Dictionary', header=1, skiprows=[2])
-    s2t_mapping = pd.read_excel(InputFileName, sheet_name='S2T Mapping', header=1, skiprows=[2])
-
-    db.newInsert(relational_db)
 
 
 
-    # @event.listens_for(engine, "before_cursor_execute")
-    # def receive_before_cursor_execute(
-    #         conn, cursor, statement, params, context, executemany
-    # ):
-    #     if executemany:
-    #         cursor.fast_executemany = True
-    #
-    #
-    # df.to_sql(tbl, engine, index=False, if_exists="append", schema="dbo")
+
+    listOfTuplesS2T = []
+    listOfTuplesRelational = []
+    listOfTuplesRef = []
+    listOfTuplesLanding = []
 
     # LOOP THROUGH THE MAP
     for rowNumber in range(2, excelHandler.getMaxRow(sheet='S2T Mapping') + 1):
@@ -84,6 +74,8 @@ for file in list_of_files:
         if sheet_target == 'NA':
             skipedRows.append(rowNumber)
             continue
+
+        listOfTuplesS2T.append(tuple(currentRowData))
 
         # if isFirstRun:
         #     db.insertDynamicTable(tableName=db.s2t_mapping, columns=s2tColumns, values=currentRowData)
@@ -120,6 +112,8 @@ for file in list_of_files:
             # db.insertDynamicTable(tableName=db.landing_db, columns=landingDBColumns,
             #                       values=[sheet_source, cell_source, source_data, currentTime, str(BatchID)])
 
+            listOfTuplesLanding.append(tuple([str(sheet_source), str(cell_source), str(source_data), str(currentTime), str(BatchID)]))
+
         # except Exception as e:
         #     print("ERROR IN ROW#" + str(rowNumber) + " -- " + str(e))
         #     errors.append(['ROW NUMBER:' + str(rowNumber), 'CELL SOURCE:' + cell_source, 'CELL TARGET:' + cell_target , 'ERROR: ' + str(e)]  )
@@ -136,16 +130,18 @@ for file in list_of_files:
 
         currentRowData = excelHandler.getRowDataFromSheet(sheet='Relational DB', row=rowNumber)
 
-        #db.insertDynamicTable(tableName=db.relational_db, columns=relationalColumns, values=currentRowData)
+        # db.insertDynamicTable(tableName=db.relational_db, columns=relationalColumns, values=currentRowData)
+        listOfTuplesRelational.append(tuple(currentRowData))
 
     if isFirstRun:
         for rowNumber in range(2, excelHandler.getMaxRow(sheet='Ref_Dictionary') + 1):
             currentRowData = excelHandler.getRowDataFromSheet(sheet='Ref_Dictionary', row=rowNumber)
-            #db.insertDynamicTable(tableName=db.ref_dictionary, columns=refDictionaryColumns, values=currentRowData)
+            # db.insertDynamicTable(tableName=db.ref_dictionary, columns=refDictionaryColumns, values=currentRowData)
+            listOfTuplesRef.append(tuple(currentRowData))
 
     excelHandler.saveSpreadSheet(fileName=InputFileName)
 
-    ExcelToPDF.excelToPDF(pdfFileName=pdfFileName, fileName=InputFileName)
+
 
     # db.printDescription()
     # db.printLandingDB()
@@ -156,6 +152,13 @@ for file in list_of_files:
 
     print("ERRORS IN ROWS: ", errors)
     print("SKIPPED ROWS: ", skipedRows)
+
+    if isFirstRun:
+        db.insertDynamicTableFast(db.s2t_mapping, columns=s2tColumns, values=listOfTuplesS2T)
+        db.insertDynamicTableFast(db.ref_dictionary, columns=refDictionaryColumns, values=listOfTuplesRef)
+
+    db.insertDynamicTableFast(db.landing_db, columns=landingDBColumns, values=listOfTuplesLanding)
+    db.insertDynamicTableFast(db.relational_db, columns=relationalColumns, values=listOfTuplesRelational)
 
     # TO CALCULATE EXECUTION TIME
     print("--- Took %s seconds to process ---" % (time.time() - start_time))
@@ -228,11 +231,14 @@ for file in list_of_files:
         excelHandlerForOutput.saveDFtoExcel('total', total)
         excelHandlerForOutput.closeWriter()
 
+        print("--- Took %s seconds to process ---" % (time.time() - start_time))
+
     except Exception as e:
-        #TODO delete file
+        # TODO delete file
         print('Reporting failed')
         print(e)
         excelHandlerForOutput.closeWriter()
 
-    db.closeConnection()
 
+
+    db.closeConnection()
