@@ -56,7 +56,8 @@ class Reports:
         """
         # ignore frequency that is not = to statistical period specified in cover page
         childrenDF = self.table[self.table['FREQUENCY_P'] == freq]
-        childrenDF = childrenDF[childrenDF['TIME_PERIOD_DATE_P'] == childrenDF['TIME_PERIOD_DATE_P'].max()]
+        childrenDF = childrenDF[childrenDF['TIME_PERIOD_DATE_P'] == childrenDF['TIME_PERIOD_DATE_P'].max()].reset_index()
+        print(childrenDF)
 
         # if parents specified (totals applicable) exclude parent values
         if not ref_dict['P_ID'].isnull().all():
@@ -67,36 +68,36 @@ class Reports:
             parentDF = en_dict.dropna(subset=['P_ID_P'])[['CL_ID_P', 'P_ID_P']].drop_duplicates()
             parentDF = parentDF.merge(en_dict[['CL_ID_P', 'ID_P', 'DESCRIPTION_P']], how='left',
                                       left_on=['CL_ID_P', 'P_ID_P'], right_on=['CL_ID_P', 'ID_P'])
-            print(parentDF)
-            mask = pd.DataFrame()
 
+            print(parentDF)
+
+            mask = pd.DataFrame()
             for i in en_dict['CL_ID_P'].str.upper().unique():
-                print(i)
                 col_name = i+'_P'
                 desc_list = parentDF[parentDF['CL_ID_P'].str.upper() == i]['DESCRIPTION_P'].tolist()
-                mask[col_name] = self.table[col_name].isin(desc_list)
-            print(mask)
+                mask[col_name] = childrenDF[col_name].isin(desc_list)
             full_mask = ~mask.any(axis=1)
             print(full_mask)
 
             childrenDF = childrenDF.assign(mask=full_mask)
             childrenDF = childrenDF[childrenDF['mask'] == True].drop(columns='mask').reset_index(drop=True)
-            print(childrenDF)
+
+        print(childrenDF[['TIME_PERIOD_Y_P','TIME_PERIOD_M_P','OBS_VALUE_P']])
 
 
         gblist=['MEASURE_ID_P']
 
-        min = childrenDF.groupby(gblist).agg({'OBS_VALUE_P': 'min'}).reset_index(drop=True)
-        min['MIN/MAX'] = 'min'
+        grouped = childrenDF.groupby(gblist)
+
+        min = childrenDF.loc[grouped["OBS_VALUE_P"].idxmin()]
+        min['MIN/MAX'] = 'MINIMUM'
         print(min)
-        max = childrenDF.groupby(gblist).agg({'OBS_VALUE_P': 'max'}).reset_index(drop=True)
-        max['MIN/MAX'] = 'max'
+
+        max = childrenDF.loc[grouped["OBS_VALUE_P"].idxmax()]
+        max['MIN/MAX'] = 'MAXIMUM'
         print(max)
 
-        min_max = pd.concat([min, max], axis=0, ignore_index=True)
-        print(min_max)
-        min_max = min_max.merge(childrenDF,how='left', on ='OBS_VALUE_P')
-        print(min_max)
+        min_max = min.append(max)
 
         #design output
         return_CL = [i for i in self.lookups if not i.__contains__('_P')]
@@ -106,19 +107,20 @@ class Reports:
         return min_max[return_cols]
 
 
-    def changes(self):
-        group_list = self.lookups_en + [self.values, self.date,'MEASURE_ID_P']
+    def changes(self,freq):
+
+        group_list = self.lookups + [self.values,'MEASURE_ID_P', self.date] +self.time_period
+        freq_table = self.table[self.table['FREQUENCY_P'] == freq]
         # IF ONLY ONE PERIOD AVAILABLE RETURN MESSAGE
-        if len(set(self.table[self.date])) == 1:
+        if len(set(freq_table[self.date])) == 1:
             diff = pd.DataFrame({'MESSAGE': ['Only one time period changes not applicable']})
             freq = pd.DataFrame({'MESSAGE': ['Only one time period frequency not applicable']})
             return diff, freq
-
         # GET DIFFERENCE AND PERCENTAGE DIFFERENCE
-        order_list = self.lookups_en + ['MEASURE_ID_P', self.date]
-        diff = self.table[group_list].sort_values(by=order_list).reset_index(drop=True)
+        order_list = self.lookups + ['MEASURE_ID_P', self.date]
+        diff = freq_table[group_list].sort_values(by=order_list).dropna(subset=['TIME_PERIOD_DATE_P']).reset_index(drop=True)
+        print(diff[group_list])
         diff = diff.assign(FREQUENCY=None, DIFFERENCE=None, PERCENT_DIFFERENCE=None)
-
         for i in range(len(diff) - 1):
             if self.freq == 1:
                 frq = diff[self.date][i + 1].year - diff[self.date][i].year
@@ -126,7 +128,7 @@ class Reports:
                 frq = (diff[self.date][i + 1].year - diff[self.date][i].year) * 12 \
                       + (diff[self.date][i + 1].month - diff[self.date][i].month)
 
-            if frq == 1:
+            if frq > 0:
                 diff.at[i + 1, 'FREQUENCY'] = frq
                 diff.at[i + 1, 'DIFFERENCE'] = diff[self.values][i + 1] - diff[self.values][i]
                 if diff[self.values][i] == 0:
@@ -138,11 +140,15 @@ class Reports:
             else:
                 continue
 
-        order_list = [self.date] + self.lookups_en
+        order_list = [self.date,'MEASURE_ID_P']
         diff = diff.sort_values(by=order_list).reset_index(drop=True)
-        freq = diff[[self.date, 'FREQUENCY']].drop_duplicates(subset=[self.date, 'FREQUENCY'])
+        print(diff)
+        diff_out = diff[self.lookups + self.time_period + [self.values,'MEASURE_ID_P','FREQUENCY','DIFFERENCE','PERCENT_DIFFERENCE']]
+        freq = diff.sort_values(by=self.date).drop_duplicates(subset=[self.date,'FREQUENCY'])
+        freq = freq[self.time_period+['FREQUENCY']]
+        print('7')
 
-        return diff, freq
+        return diff_out, freq
 
     def totals_new(self, ref_dict):
         if ref_dict['P_ID'].isnull().all():

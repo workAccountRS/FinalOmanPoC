@@ -43,6 +43,9 @@ class ExcelHandler:
 
     def getCellCoordinate(self, sheet="S2T Mapping", row=1):
         sheet = self.wb[sheet]
+        timeStampCell = None
+        batchIdCell = None
+        dataLoadCell = None
         for index, row in enumerate(sheet.iter_rows()):
             for cell in row:
                 if cell.value == 'Time_Stamp':
@@ -84,8 +87,8 @@ class ExcelHandler:
 
     def creatWorkBook(self, filename):
         wb = Workbook()
-        sheets = {'ws1': 'pass', 'ws2': 'fail', 'ws3': 'min_max','ws5': 'frequency',
-                  'ws4': 'changes', 'ws6': 'total', 'ws7':'predecessor discrepancies','ws8':'missing lookups'}
+        sheets = dict(ws1='pass', ws2='fail', ws3='min_max', ws5='frequency', ws4='changes', ws6='total',
+                      ws7='predecessor discrepancies', ws8='missing lookups')
 
         for key, value in sheets.items():
             key = wb.create_sheet()

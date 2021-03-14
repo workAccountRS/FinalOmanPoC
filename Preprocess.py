@@ -61,7 +61,7 @@ class Preprocess:
                       'يونيو': 'jun'}
 
         pattern = '|'.join([*month_dict.keys()]) + '|'.join(set(month_dict.values()))
-        allmonths = [self.matchPattern(i, pattern) for i in column]
+        allmonths = [None if str(i).__contains__('-') else self.matchPattern(i, pattern) for i in column]
         print(allmonths)
 
         output = []
@@ -105,16 +105,18 @@ class Preprocess:
     def getNumeric(self, column):
         output = []
         for i in column:
-            try:
-                n = re.sub('[^0-9-+.]+', '', i)
-                if len(n) == 0:
-                    output.append(None)
-                else:
-                    output.append(float(n))
-            except:
+            if i == '-':
                 output.append(None)
+            else:
+                try:
+                    n = re.sub('[^0-9-+.]+', '', i)
+                    if len(n) == 0:
+                        output.append(None)
+                    else:
+                        output.append(float(n))
+                except:
+                    output.append(None)
 
-        print(output)
         return output
 
     def prepDatesAndValues(self, df):
@@ -125,13 +127,13 @@ class Preprocess:
 
         # convert obs_value_p to numeric values
         df['OBS_VALUE_P'] = pd.to_numeric(self.getNumeric(df['OBS_VALUE_P']))
+        print(df['OBS_VALUE_P'])
 
         # get TIME_PERIOD_DATE_P based on TIME_PERIOD_Y_P and TIME_PERIOD_Y_P
         if freq_val == 1:
             df = df.assign(TIME_PERIOD_DATE_P=self.getDate(year_list=self.getYear(df['TIME_PERIOD_Y_P'])))
             df['TIME_PERIOD_Y_P'] = self.getYear(df['TIME_PERIOD_Y_P'])
         else:
-            print('Here4')
             df['TIME_PERIOD_M_P'] = self.getMonth(df['TIME_PERIOD_M_P'])
             df = df.assign(TIME_PERIOD_DATE_P=self.getDate(df['TIME_PERIOD_M_P'], self.getYear(df['TIME_PERIOD_Y_P'])))
             df['TIME_PERIOD_Y_P'] = self.getYear(df['TIME_PERIOD_Y_P'])
@@ -143,7 +145,6 @@ class Preprocess:
         df = df.assign(PUBLICATION_DATE_EN_P=
                              self.getDate(self.getMonth(df['PUBLICATION_DATE_EN_P']),
                                           self.getYear(df['PUBLICATION_DATE_EN_P'])))
-
         return df
 
     def getPredDiscrepancies(self, curr_table, old_table):
@@ -155,9 +156,21 @@ class Preprocess:
             columns_output = [i for i in old_table.columns if not i.upper().endswith('_P')]
             print(columns_output)
 
-            joint_table = curr_table.append(old_table, ignore_index=True)
-            PredDisc = joint_table.drop_duplicates(subset=columns_P, keep=False)
-            PredDisc = PredDisc[columns_output]
+            newYears = curr_table['TIME_PERIOD_Y_P'].unique().tolist()
+            oldYears = old_table['TIME_PERIOD_Y_P'].unique().tolist()
+            years = set(newYears).intersection(oldYears)
+            print(years)
+
+            df_cur = curr_table[curr_table['TIME_PERIOD_Y_P'].isin(years)]
+            df_old = old_table[old_table['TIME_PERIOD_Y_P'].isin(years)]
+
+            joint_table = df_cur.append(df_old, ignore_index=True)
+
+            for i in columns_P:
+                print('column',i)
+                PredDisc = joint_table.drop_duplicates(subset=i, keep=False)
+                print(PredDisc[i])
+                #PredDisc = PredDisc[columns_output]
 
             if PredDisc.empty:
                 PredDisc = pd.DataFrame({'MESSAGE': ['No predecessor discrepancies']})

@@ -12,12 +12,12 @@ class Table:
         self.freq = self.table['FREQUENCY'][self.table.FREQUENCY.first_valid_index()].upper()
         self.columns = [*self.table.columns]
 
-        self.optionalColumns = ['NOTE1_AR', 'NOTE2_AR', 'NOTE3_AR', 'NOTE1_EN', 'NOTE2_EN', 'NOTE3_EN',
-                                'UNIT_EN', 'UNIT_AR', 'MULTIPLIER_EN', 'MULTIPLIER_AR']
+        self.optionalColumns = ['NOTE1_AR_P', 'NOTE2_AR_P', 'NOTE3_AR_P', 'NOTE1_EN_P', 'NOTE2_EN_P', 'NOTE3_EN_P',
+                                'UNIT_EN_P', 'UNIT_AR_P', 'MULTIPLIER_EN_P', 'MULTIPLIER_AR_P']
 
-        if self.freq.__contains__('YEAR') or self.freq.__contains__('ANNUAL'):
-            self.columns.remove('TIME_PERIOD_M')
-            self.columns.remove('TIME_PERIOD_M_P')
+        # if self.freq.__contains__('YEAR') or self.freq.__contains__('ANNUAL'):
+        #     self.columns.remove('TIME_PERIOD_M')
+        #     self.columns.remove('TIME_PERIOD_M_P')
 
 
     def table_rules(self, row):
@@ -31,7 +31,7 @@ class Table:
         lookups = self.lookups
         iter_over = [i for i in self.columns if i.upper().endswith('_P')]
         for item in iter_over:
-            if item.upper()[:-2] in ['TIME_PERIOD_DATE']:
+            if item.upper() in ['TIME_PERIOD_DATE_P']:
                 continue
 
             elif item.upper() in ['PUBLICATION_DATE_EN_P','PUBLICATION_DATE_AR_P']:
@@ -41,7 +41,17 @@ class Table:
                     else:
                         output['invalid input'].append(item[:-2])
 
-            elif item.upper in ['TIME_PERIOD_Y_P', 'TIME_PERIOD_M_P']:
+            elif item.upper() == 'TIME_PERIOD_M_P':
+                if input['FREQUENCY_P'].__contains__('month'):
+                    if pd.isna(input[item]):
+                        if pd.isna(input[item[:-2]]):
+                            output['isnull'].append(item[:-2])
+                        else:
+                            output['invalid input'].append(item[:-2])
+                else:
+                    continue
+
+            elif item.upper() == 'TIME_PERIOD_Y_P':
                 if pd.isna(input[item]):
                     if pd.isna(input[item[:-2]]):
                         output['isnull'].append(item[:-2])

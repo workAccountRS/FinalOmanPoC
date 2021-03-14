@@ -126,12 +126,14 @@ for file in list_of_files:
         # TIME AND BATCH ID
 
         cell = excelHandler.getCellCoordinate(sheet='Relational DB')
-        excelHandler.writeCell(sheet='Relational DB', cell=str(str(cell[0]) + str(rowNumber)), value=currentTime)
-        excelHandler.writeCell(sheet='Relational DB', cell=str(str(cell[1]) + str(rowNumber)), value=str(BatchID))
+        if cell[0] and cell[1]:
+            excelHandler.writeCell(sheet='Relational DB', cell=str(str(cell[0]) + str(rowNumber)), value=currentTime)
+            excelHandler.writeCell(sheet='Relational DB', cell=str(str(cell[1]) + str(rowNumber)), value=str(BatchID))
 
-        timeCount = db.getDistincTime()
-        if excelHandler.getCellFromSheet(sheet='Relational DB', cell=str(str(cell[2]) + str(rowNumber))) is None:
-            excelHandler.writeCell(sheet='Relational DB', cell=str(str(cell[2]) + str(rowNumber)), value=timeCount)
+        if cell[2]:
+            timeCount = db.getDistincTime()
+            if excelHandler.getCellFromSheet(sheet='Relational DB', cell=str(str(cell[2]) + str(rowNumber))) is None:
+                excelHandler.writeCell(sheet='Relational DB', cell=str(str(cell[2]) + str(rowNumber)), value=timeCount)
 
         currentRowData = excelHandler.getRowDataFromSheet(sheet='Relational DB', row=rowNumber)
         currentRowData = ['' if i is None else str(i) for i in currentRowData]
@@ -197,16 +199,16 @@ for file in list_of_files:
         df_old = prep.initialPrep(df_old)
         ref_dict = prep.initialPrep(ref_dict)
 
-        # PREP DATES AND NUMBER VALUES
-        print('____________________________date and obs prep____________________________')
-        relational_data = prep.prepDatesAndValues(df_curr)
-        print('here')
-        reports = Reports(relational_data)
-
         # PRED DISCREPANCIES CHECK
         print('____________________________PredDisc____________________________')
         PredDisc = prep.getPredDiscrepancies(df_curr, df_old)
         excelHandlerForOutput.saveDFtoExcel('predecessor discrepancies', PredDisc)
+
+
+        # PREP DATES AND NUMBER VALUES
+        print('____________________________date and obs prep____________________________')
+        relational_data = prep.prepDatesAndValues(df_curr)
+        reports = Reports(relational_data)
 
         # GET GOOD AND BAD ROWS AND OUTPUT TO EXCEL
         print('____________________________pass fail____________________________')
@@ -216,7 +218,7 @@ for file in list_of_files:
         excelHandlerForOutput.saveDFtoExcel('pass', df_pass)
 
         # GET MISSING LOOKUPS
-        print('____________________________PredDisc____________________________')
+        print('____________________________missing CL____________________________')
         missingCL = reports.CLCoverage(ref_dict)
         excelHandlerForOutput.saveDFtoExcel('missing lookups', missingCL)
 
@@ -227,7 +229,7 @@ for file in list_of_files:
 
         # GET DIFFERENCE AND PERCENTAGE DIFFERENCE
         print('____________________________changes____________________________')
-        diff, freq = reports.changes()
+        diff, freq = reports.changes(freq)
         excelHandlerForOutput.saveDFtoExcel('frequency', freq)
         excelHandlerForOutput.saveDFtoExcel('changes', diff)
 
