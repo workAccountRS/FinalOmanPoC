@@ -130,7 +130,7 @@ for file in list_of_files:
         excelHandler.writeCell(sheet='Relational DB', cell=str(str(cell[1]) + str(rowNumber)), value=str(BatchID))
 
         currentRowData = excelHandler.getRowDataFromSheet(sheet='Relational DB', row=rowNumber)
-        currentRowData = [str(i) for i in currentRowData]
+        currentRowData = ['' if i is None else str(i) for i in currentRowData]
         # db.insertDynamicTable(tableName=db.relational_db, columns=relationalColumns, values=currentRowData)
         listOfTuplesRelational.append(tuple(currentRowData))
 
