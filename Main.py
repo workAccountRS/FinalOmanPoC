@@ -1,19 +1,17 @@
 import glob
 import os
-
 from ExcelHandler import ExcelHandler
 import Utilities
 import time
 from DataBase import DB
 import ExcelToPDF
-import pandas as pd
 
 directory = os.path.abspath('.')
 path = directory + "\\Input\\*.xlsx"
 list_of_files = glob.glob(path)
 print(list_of_files)
 for file in list_of_files:
-    if str(file).__contains__("~"):  # TO SKIP TEMP EXCEL FILES
+    if str(file).__contains__("~"):  # TO SKIP TEMP EXCEL FILES (Opened Files)
         continue
 
     # TO CALCULATE EXECUTION TIME
@@ -29,25 +27,31 @@ for file in list_of_files:
     db = DB(landing_db='landing_db' + tablePostFix, relational_db='relational_db' + tablePostFix,
             s2t_mapping='s2t_mapping' + tablePostFix, ref_dictionary='ref_dictionary' + tablePostFix)
 
+
+
     # COLUMNS TO CREATE DYNAMIC TABLES
     s2tColumns = excelHandler.getRowDataFromSheet(sheet='S2T Mapping', row=1)
     relationalColumns = excelHandler.getRowDataFromSheet(sheet='Relational DB', row=2)
+    relationalColumns.append('Serial_Data_Load')
     refDictionaryColumns = excelHandler.getRowDataFromSheet(sheet='Ref_Dictionary', row=1)
     landingDBColumns = excelHandler.getRowDataFromSheet(sheet='Landing DB', row=1)
 
-    db.createDynamicTable(tableName=db.s2t_mapping, columns=s2tColumns)
-    db.createDynamicTable(tableName=db.relational_db, columns=relationalColumns)
-    db.createDynamicTable(tableName=db.landing_db, columns=landingDBColumns)
-    db.createDynamicTable(tableName=db.ref_dictionary, columns=refDictionaryColumns)
+    isNewTable = db.createDynamicTable(tableName=db.s2t_mapping, columns=s2tColumns)
+
+    if isNewTable:
+        db.createDynamicTable(tableName=db.relational_db, columns=relationalColumns)
+        db.createDynamicTable(tableName=db.landing_db, columns=landingDBColumns)
+        db.createDynamicTable(tableName=db.ref_dictionary, columns=refDictionaryColumns)
 
     isFirstRun = not (db.getNumberOfRecords(tableName=db.s2t_mapping) > 0)
+    timeCount = db.getDistincTime() + 1
 
     lastRow = excelHandler.getMaxRow(sheet='Landing DB') + 1
 
     BatchID = Utilities.getBatchID()
     currentTime = Utilities.getCurrentTime()
 
-    skipedRows = []
+    skippedRows = []
     errors = []
 
     listOfTuplesS2T = []
@@ -69,7 +73,7 @@ for file in list_of_files:
         Ref_Dictionary = currentRowData[8]
 
         if sheet_target == 'NA':
-            skipedRows.append(rowNumber)
+            skippedRows.append(rowNumber)
             continue
 
         listOfTuplesS2T.append(tuple(currentRowData))
@@ -122,18 +126,14 @@ for file in list_of_files:
     for rowNumber in range(4, excelHandler.getMaxRow(sheet='Relational DB') + 1):
         # TIME AND BATCH ID
 
-        cell = excelHandler.getCellCoordinate(sheet='Relational DB')
-        if cell[0] and cell[1]:
-            excelHandler.writeCell(sheet='Relational DB', cell=str(str(cell[0]) + str(rowNumber)), value=currentTime)
-            excelHandler.writeCell(sheet='Relational DB', cell=str(str(cell[1]) + str(rowNumber)), value=str(BatchID))
-
-        if cell[2]:
-            timeCount = db.getDistincTime()
-            if excelHandler.getCellFromSheet(sheet='Relational DB', cell=str(str(cell[2]) + str(rowNumber))) is None:
-                excelHandler.writeCell(sheet='Relational DB', cell=str(str(cell[2]) + str(rowNumber)), value=timeCount)
+        currentTimeCell , BatchIDCell  = excelHandler.getCellCoordinate(sheet='Relational DB')
+        if currentTimeCell and BatchIDCell:
+            excelHandler.writeCell(sheet='Relational DB', cell=str(str(currentTimeCell) + str(rowNumber)), value=currentTime)
+            excelHandler.writeCell(sheet='Relational DB', cell=str(str(BatchIDCell) + str(rowNumber)), value=str(BatchID))
 
         currentRowData = excelHandler.getRowDataFromSheet(sheet='Relational DB', row=rowNumber)
         currentRowData = ['' if i is None else str(i) for i in currentRowData]
+        currentRowData.append(timeCount)
         # db.insertDynamicTable(tableName=db.relational_db, columns=relationalColumns, values=currentRowData)
         listOfTuplesRelational.append(tuple(currentRowData))
 
@@ -156,7 +156,7 @@ for file in list_of_files:
     # ========================== RESULTS
 
     print("ERRORS IN ROWS: ", errors)
-    print("SKIPPED ROWS: ", skipedRows)
+    print("SKIPPED ROWS: ", skippedRows)
 
     if isFirstRun:
         db.insertDynamicTableFast(db.s2t_mapping, columns=s2tColumns, values=listOfTuplesS2T)

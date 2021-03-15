@@ -101,10 +101,11 @@ class DB:
             cursor.execute(sql)
             print(' A NEW TABLE WITH THE FOLLOWING NAME:', str(tableName),
                   ' HAS BEEN CREATED')
+            return True
         except Exception as e:
             if str(e).__contains__('name is already used by an existing object'):
                 print('TABLE NAME ALREADY EXISTS...')
-                return
+                return False
             else:
                 print(e)
                 return
