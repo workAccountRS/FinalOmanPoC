@@ -145,6 +145,9 @@ for file in list_of_files:
 
     excelHandler.saveSpreadSheet(fileName=InputFileName)
 
+    pdfFileName = excelHandler.getCellFromSheet(sheet='Cover page', cell='B5')
+    ExcelToPDF.excelToPDF(pdfFileName=pdfFileName, fileName=InputFileName)
+
     # db.printDescription()
     # db.printLandingDB()
     # db.printS2t()
