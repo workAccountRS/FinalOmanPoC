@@ -1,5 +1,4 @@
 import pandas as pd
-import re
 
 
 class Reports:
@@ -34,9 +33,7 @@ class Reports:
         missing = {'Missing CL_ID':[],'Missing Description':[]}
         for i in prepCLs:
             dist_list = lookupDF[i].dropna().unique()
-            print('list',dist_list)
             lookup_list = ref_dict[ref_dict['CL_ID_P']==i[:-2].lower()]['DESCRIPTION_P'].tolist()
-            print('check', lookup_list)
 
             for j in dist_list:
                 if j not in lookup_list:
@@ -57,7 +54,9 @@ class Reports:
         # ignore frequency that is not = to statistical period specified in cover page
         childrenDF = self.table[self.table['FREQUENCY_P'] == freq]
         childrenDF = childrenDF[childrenDF['TIME_PERIOD_DATE_P'] == childrenDF['TIME_PERIOD_DATE_P'].max()].reset_index()
-        print(childrenDF)
+        if len(childrenDF['MEASURE_ID_P'].unique()) == len(childrenDF):
+            print('Only one value per measure, minimum maximum check not applicable')
+            return pd.DataFrame({'MESSAGE': ['Only one value per measure, minimum maximum check not applicable']})
 
         # if parents specified (totals applicable) exclude parent values
         if not ref_dict['P_ID'].isnull().all():
@@ -69,21 +68,15 @@ class Reports:
             parentDF = parentDF.merge(en_dict[['CL_ID_P', 'ID_P', 'DESCRIPTION_P']], how='left',
                                       left_on=['CL_ID_P', 'P_ID_P'], right_on=['CL_ID_P', 'ID_P'])
 
-            print(parentDF)
-
             mask = pd.DataFrame()
             for i in en_dict['CL_ID_P'].str.upper().unique():
                 col_name = i+'_P'
                 desc_list = parentDF[parentDF['CL_ID_P'].str.upper() == i]['DESCRIPTION_P'].tolist()
                 mask[col_name] = childrenDF[col_name].isin(desc_list)
             full_mask = ~mask.any(axis=1)
-            print(full_mask)
 
             childrenDF = childrenDF.assign(mask=full_mask)
             childrenDF = childrenDF[childrenDF['mask'] == True].drop(columns='mask').reset_index(drop=True)
-
-        print(childrenDF[['TIME_PERIOD_Y_P','TIME_PERIOD_M_P','OBS_VALUE_P']])
-
 
         gblist=['MEASURE_ID_P']
 
@@ -91,11 +84,9 @@ class Reports:
 
         min = childrenDF.loc[grouped["OBS_VALUE_P"].idxmin()]
         min['MIN/MAX'] = 'MINIMUM'
-        print(min)
 
         max = childrenDF.loc[grouped["OBS_VALUE_P"].idxmax()]
         max['MIN/MAX'] = 'MAXIMUM'
-        print(max)
 
         min_max = min.append(max)
 
@@ -115,11 +106,11 @@ class Reports:
         if len(set(freq_table[self.date])) == 1:
             diff = pd.DataFrame({'MESSAGE': ['Only one time period changes not applicable']})
             freq = pd.DataFrame({'MESSAGE': ['Only one time period frequency not applicable']})
+            print('Only one time period changes and frequency check not applicable')
             return diff, freq
         # GET DIFFERENCE AND PERCENTAGE DIFFERENCE
         order_list = self.lookups + ['MEASURE_ID_P', self.date]
         diff = freq_table[group_list].sort_values(by=order_list).dropna(subset=['TIME_PERIOD_DATE_P']).reset_index(drop=True)
-        print(diff[group_list])
         diff = diff.assign(FREQUENCY=None, DIFFERENCE=None, PERCENT_DIFFERENCE=None)
         for i in range(len(diff) - 1):
             if self.freq == 1:
@@ -142,16 +133,15 @@ class Reports:
 
         order_list = [self.date,'MEASURE_ID_P']
         diff = diff.sort_values(by=order_list).reset_index(drop=True)
-        print(diff)
         diff_out = diff[self.lookups + self.time_period + [self.values,'MEASURE_ID_P','FREQUENCY','DIFFERENCE','PERCENT_DIFFERENCE']]
         freq = diff.sort_values(by=self.date).drop_duplicates(subset=[self.date,'FREQUENCY'])
         freq = freq[self.time_period+['FREQUENCY']]
-        print('7')
 
         return diff_out, freq
 
     def totals_new(self, ref_dict):
         if ref_dict['P_ID'].isnull().all():
+            print('Totals not applicable')
             return pd.DataFrame({'MESSAGE': ['Totals not applicable']})
 
         full_table = self.table
@@ -182,39 +172,16 @@ class Reports:
             sum_by_list = sum_by[:]
             sum_by_list.remove(i)
             sum_by_list.append(i.replace('_ID', '_ParentID'))
-            print(sum_by_list + groupby_fixed)
             temp2 = full_table.groupby(sum_by_list+groupby_fixed).agg({'OBS_VALUE_P': "sum"}).reset_index()
-            print(temp2)
             temp2.columns = [i.replace('_ParentID', '_ID') for i in temp2.columns]
             actual_totals = actual_totals.append(temp2, ignore_index=True)
 
         on = [i for i in actual_totals.columns if not i.__contains__('OBS')]
-
         actual_totals = actual_totals.drop_duplicates()
-
         totals = actual_totals.merge(full_table,on=on, how='left', suffixes=('_L', '_R'))
-
         totals['CALCULATED - TOTALS'] = totals['OBS_VALUE_P_L'] - totals['OBS_VALUE_P_R']
-
         out_cols = self.lookups + self.time_period + ['OBS_VALUE_P_L','OBS_VALUE_P_R','CALCULATED - TOTALS']
         totals = totals[out_cols]
-
         totals = totals.rename(columns={'OBS_VALUE_P_L': 'CALCULATED TOTALS', 'OBS_VALUE_P_R': 'REPORTED TOTALS'}, inplace = False)
 
         return totals
-
-    def getPredDiscrepancies_test(self, curr_table, old_table):
-        if old_table.empty:
-            PredDisc = pd.DataFrame({'MESSAGE': ['No previously inserted data for this table']})
-        else:
-            columns_P = [i for i in old_table.columns if i.upper().endswith('_P')]
-            columns_output = [i for i in old_table.columns if not i.upper().endswith('_P')]
-
-            joint_table = curr_table.append(old_table, ignore_index=True)
-            PredDisc = joint_table.drop_duplicates(subset=columns_P, keep=False)
-            PredDisc = PredDisc[columns_output]
-
-            if PredDisc.empty:
-                PredDisc = pd.DataFrame({'MESSAGE': ['No predecessor discrepancies']})
-
-        return PredDisc

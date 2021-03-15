@@ -50,10 +50,6 @@ for file in list_of_files:
     skipedRows = []
     errors = []
 
-
-
-
-
     listOfTuplesS2T = []
     listOfTuplesRelational = []
     listOfTuplesRef = []
@@ -113,7 +109,8 @@ for file in list_of_files:
             # db.insertDynamicTable(tableName=db.landing_db, columns=landingDBColumns,
             #                       values=[sheet_source, cell_source, source_data, currentTime, str(BatchID)])
 
-            listOfTuplesLanding.append(tuple([str(sheet_source), str(cell_source), str(source_data), str(currentTime), str(BatchID)]))
+            listOfTuplesLanding.append(
+                tuple([str(sheet_source), str(cell_source), str(source_data), str(currentTime), str(BatchID)]))
 
         # except Exception as e:
         #     print("ERROR IN ROW#" + str(rowNumber) + " -- " + str(e))
@@ -148,8 +145,6 @@ for file in list_of_files:
 
     excelHandler.saveSpreadSheet(fileName=InputFileName)
 
-
-
     # db.printDescription()
     # db.printLandingDB()
     # db.printS2t()
@@ -179,7 +174,8 @@ for file in list_of_files:
 
     import pandas as pd
 
-    pd.set_option('display.max_rows', None)
+    pd.set_option('display.max_columns', None)
+    pd.set_option('display.max_rows', 100)
 
     formattedTime = str(currentTime).replace('/', '-').replace(':', '').replace(' ', '_')
     outputFile = 'Validation_{0}_{1}.xlsx'.format(pdfFileName, formattedTime)
@@ -204,25 +200,30 @@ for file in list_of_files:
         PredDisc = prep.getPredDiscrepancies(df_curr, df_old)
         excelHandlerForOutput.saveDFtoExcel('predecessor discrepancies', PredDisc)
 
-
         # PREP DATES AND NUMBER VALUES
         print('____________________________date and obs prep____________________________')
         relational_data = prep.prepDatesAndValues(df_curr)
         reports = Reports(relational_data)
-
-        print(relational_data['TIME_PERIOD_DATE_P'])
+        print(relational_data[
+                  ['OBS_VALUE_P', 'PUBLICATION_DATE_EN_P', 'PUBLICATION_DATE_AR_P', 'TIME_PERIOD_DATE_P']].to_string())
 
         # GET GOOD AND BAD ROWS AND OUTPUT TO EXCEL
         print('____________________________pass fail____________________________')
-        tableRules = tableChecks.Table(relational_data, ref_dict)
+        optionalColumns = ['NOTE1_AR_P', 'NOTE2_AR_P', 'NOTE3_AR_P', 'NOTE1_EN_P', 'NOTE2_EN_P', 'NOTE3_EN_P',
+                           'UNIT_EN_P', 'UNIT_AR_P', 'MULTIPLIER_EN_P', 'MULTIPLIER_AR_P']
+
+        tableRules = tableChecks.Table(relational_data, ref_dict, optionalColumns)
         df_pass, df_fail = tableRules.getPassFail()
         excelHandlerForOutput.saveDFtoExcel('fail', df_fail)
         excelHandlerForOutput.saveDFtoExcel('pass', df_pass)
+        print('rows passed', len(df_pass), 'out of', len(relational_data))
+        print('rows failed', len(df_fail), 'out of', len(relational_data))
 
         # GET MISSING LOOKUPS
         print('____________________________missing CL____________________________')
         missingCL = reports.CLCoverage(ref_dict)
         excelHandlerForOutput.saveDFtoExcel('missing lookups', missingCL)
+        print('missingCL')
 
         # GET MIN MAX
         print('____________________________min max____________________________')
@@ -230,7 +231,7 @@ for file in list_of_files:
         excelHandlerForOutput.saveDFtoExcel('min_max', min_max)
 
         # GET DIFFERENCE AND PERCENTAGE DIFFERENCE
-        print('____________________________changes____________________________')
+        print('_______________________changes and frequency____________________________')
         diff, freq = reports.changes(freq)
         excelHandlerForOutput.saveDFtoExcel('frequency', freq)
         excelHandlerForOutput.saveDFtoExcel('changes', diff)

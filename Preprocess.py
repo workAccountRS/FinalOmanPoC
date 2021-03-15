@@ -36,7 +36,7 @@ class Preprocess:
 
         return match
 
-    def getMonth(self, column):
+    def getMonth(self, column, isDate):
 
         month_dict = {'اب': 'aug',
                       'اذار': 'mar',
@@ -64,7 +64,10 @@ class Preprocess:
                       'يونيو': 'jun'}
 
         pattern = '|'.join([*month_dict.keys()]) + '|'.join(set(month_dict.values()))
-        allmonths = [None if str(i).__contains__('-') else self.matchPattern(i, pattern) for i in column]
+        if isDate == 0:
+            allmonths = [None if str(i).__contains__('-') else self.matchPattern(i, pattern) for i in column]
+        else:
+            allmonths = [self.matchPattern(i, pattern) for i in column]
 
         output = []
         for i in allmonths:
@@ -72,7 +75,6 @@ class Preprocess:
                 output.append(month_dict[i])
             else:
                 output.append(i)
-        print('getmonth',output)
         return output
 
     def getYear(self, column):
@@ -84,48 +86,38 @@ class Preprocess:
                 output.append(int(y))
             except:
                 output.append(None)
-        print('getyear',output)
         return output
 
-    # def getDate(self, table, month_list=None, year_list=[]):
-    #     if month_list is not None:
-    #         date = []
-    #         for i in range(len(month_list)):
-    #             if pd.isna(year_list[i]):
-    #                 date.append(None)
-    #             elif pd.isna(month_list[i]):
-    #                 if table['FREQUENCY_P'][i].__contains__('month'):
-    #                     date.append(None)
-    #                 else:
-    #                     date.append(str(year_list[i]))
-    #             else:
-    #                 date.append(month_list[i] + '-' + str(year_list[i]))
-    #         output = pd.to_datetime(date, errors='coerce')
-    #
-    #     else:
-    #         output = pd.to_datetime(year_list, format='%Y', errors='coerce')
-    #     print(output)
-    #     return output
-
     def getDate(self, table, month_title, year_title):
-        month_list = self.getMonth(table[month_title])
+        isDate = 0
+        if month_title == year_title:
+            isDate = 1
+
+        month_list = self.getMonth(table[month_title], isDate)
         year_list = self.getYear(table[year_title])
         freq = table['FREQUENCY_P'].tolist()
         date = []
 
         for i in range(len(month_list)):
+            # Year should be provided in all cases
             if pd.isna(year_list[i]):
                 date.append(None)
-            elif freq[i].__contains__('month'):
+
+            # frequency is relevant to time series
+            elif freq[i].__contains__('month') and isDate == 0:
                 if pd.isna(month_list[i]):
                     date.append(None)
                 else:
                     date.append(month_list[i] + '-' + str(year_list[i]))
+
+            # frequency is irrelevant or frequency is not monthly
             else:
-                date.append(str(year_list[i]))
+                if pd.isna(month_list[i]):
+                    date.append(str(year_list[i]))
+                else:
+                    date.append(month_list[i] + '-' + str(year_list[i]))
 
         output = pd.to_datetime(date, errors='coerce')
-        print('date output',output)
         return output
 
     def getNumeric(self, column):
@@ -155,31 +147,14 @@ class Preprocess:
         df['OBS_VALUE_P'] = pd.to_numeric(self.getNumeric(df['OBS_VALUE_P']))
 
         # get TIME_PERIOD_DATE_P based on TIME_PERIOD_Y_P and TIME_PERIOD_Y_P
-        df['TIME_PERIOD_M_P'] = self.getMonth(df['TIME_PERIOD_M_P'])
         df = df.assign(TIME_PERIOD_DATE_P=self.getDate(df, 'TIME_PERIOD_M_P', 'TIME_PERIOD_Y_P'))
+        df['TIME_PERIOD_M_P'] = self.getMonth(df['TIME_PERIOD_M_P'], 0)
         df['TIME_PERIOD_Y_P'] = self.getYear(df['TIME_PERIOD_Y_P'])
 
         # get PUBLICATION_DATE_AR_P and PUBLICATION_DATE_EN_P
         df = df.assign(PUBLICATION_DATE_AR_P=
                        self.getDate(df, 'PUBLICATION_DATE_AR_P', 'PUBLICATION_DATE_AR_P'))
-        df = df.assign(PUBLICATION_DATE_EN_P=
-                       self.getDate(df, 'PUBLICATION_DATE_EN_P', 'PUBLICATION_DATE_EN_P'))
-
-        # if freq_val == 1:
-        #     df = df.assign(TIME_PERIOD_DATE_P=self.getDate(year_list=self.getYear(df['TIME_PERIOD_Y_P'])))
-        #     df['TIME_PERIOD_Y_P'] = self.getYear(df['TIME_PERIOD_Y_P'])
-        # else:
-        #     df['TIME_PERIOD_M_P'] = self.getMonth(df['TIME_PERIOD_M_P'])
-        #     df = df.assign(TIME_PERIOD_DATE_P=self.getDate(df, df['TIME_PERIOD_M_P'], self.getYear(df['TIME_PERIOD_Y_P'])))
-        #     df['TIME_PERIOD_Y_P'] = self.getYear(df['TIME_PERIOD_Y_P'])
-
-        # get PUBLICATION_DATE_AR_P and PUBLICATION_DATE_EN_P
-        # df = df.assign(PUBLICATION_DATE_AR_P=
-        #                      self.getDate(df, self.getMonth(df['PUBLICATION_DATE_AR_P']),
-        #                                   self.getYear(df['PUBLICATION_DATE_AR_P'])))
-        # df = df.assign(PUBLICATION_DATE_EN_P=
-        #                      self.getDate(df, self.getMonth(df['PUBLICATION_DATE_EN_P']),
-        #                                   self.getYear(df['PUBLICATION_DATE_EN_P'])))
+        df = df.assign(PUBLICATION_DATE_EN_P=pd.to_datetime(df['PUBLICATION_DATE_EN_P']))
         return df
 
     def getPredDiscrepancies(self, curr_table, old_table):
@@ -192,18 +167,21 @@ class Preprocess:
             newYears = curr_table['TIME_PERIOD_Y_P'].unique().tolist()
             oldYears = old_table['TIME_PERIOD_Y_P'].unique().tolist()
             years = set(newYears).intersection(oldYears)
-            print(years)
+            print('common years', years)
 
             df_cur = curr_table[curr_table['TIME_PERIOD_Y_P'].isin(years)]
             df_old = old_table[old_table['TIME_PERIOD_Y_P'].isin(years)]
 
             joint_table = df_cur.append(df_old, ignore_index=True)
 
+            #for debugging
             for i in columns_P:
                 print('column', i)
                 PredDisc = joint_table.drop_duplicates(subset=i, keep=False)
                 print(PredDisc[i])
                 # PredDisc = PredDisc[columns_output]
+
+            PredDisc = joint_table.drop_duplicates(subset=columns_P, keep=False)
 
             if PredDisc.empty:
                 PredDisc = pd.DataFrame({'MESSAGE': ['No predecessor discrepancies']})

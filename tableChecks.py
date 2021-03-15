@@ -3,22 +3,12 @@ import pandas as pd
 
 rules = ValidationRules()
 
-
 class Table:
-    def __init__(self, table, lookups):
+    def __init__(self, table, lookups, optionalColumns):
         self.table = table
         self.lookups = lookups
-
-        self.freq = self.table['FREQUENCY'][self.table.FREQUENCY.first_valid_index()].upper()
         self.columns = [*self.table.columns]
-
-        self.optionalColumns = ['NOTE1_AR_P', 'NOTE2_AR_P', 'NOTE3_AR_P', 'NOTE1_EN_P', 'NOTE2_EN_P', 'NOTE3_EN_P',
-                                'UNIT_EN_P', 'UNIT_AR_P', 'MULTIPLIER_EN_P', 'MULTIPLIER_AR_P']
-
-        # if self.freq.__contains__('YEAR') or self.freq.__contains__('ANNUAL'):
-        #     self.columns.remove('TIME_PERIOD_M')
-        #     self.columns.remove('TIME_PERIOD_M_P')
-
+        self.optionalColumns = optionalColumns
 
     def table_rules(self, row):
         output = {'isnull': [],
@@ -34,7 +24,7 @@ class Table:
             if item.upper() in ['TIME_PERIOD_DATE_P']:
                 continue
 
-            elif item.upper() in ['PUBLICATION_DATE_EN_P','PUBLICATION_DATE_AR_P']:
+            elif item.upper() in ['PUBLICATION_DATE_EN_P', 'PUBLICATION_DATE_AR_P']:
                 if pd.isna(input[item]):
                     if pd.isna(input[item[:-2]]):
                         output['isnull'].append(item[:-2])
@@ -63,7 +53,7 @@ class Table:
                 if rules.notnull(input[item[:-2]]):
                     # CHECK DATA TYPE
                     dataType = 'text'
-                    if str(item).upper() in ['TIME_PERIOD_Y_P','OBS_VALUE_P']:
+                    if str(item).upper() in ['TIME_PERIOD_Y_P', 'OBS_VALUE_P']:
                         dataType = 'number'
 
                     if not rules.data_type(input[item], dataType):
@@ -97,7 +87,8 @@ class Table:
         dataframe = self.table
 
         df_fail = pd.DataFrame(columns=[*dataframe.columns] +
-                                       ['isnull', 'wrong type', 'wrong language', 'out of range lookup', 'invalid input'])
+                                       ['isnull', 'wrong type', 'wrong language', 'out of range lookup',
+                                        'invalid input'])
         df_pass = pd.DataFrame(columns=dataframe.columns)
 
         for column, row in dataframe.iterrows():
