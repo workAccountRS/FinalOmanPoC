@@ -210,6 +210,8 @@ for file in list_of_files:
         relational_data = prep.prepDatesAndValues(df_curr)
         reports = Reports(relational_data)
 
+        print(relational_data['TIME_PERIOD_DATE_P'])
+
         # GET GOOD AND BAD ROWS AND OUTPUT TO EXCEL
         print('____________________________pass fail____________________________')
         tableRules = tableChecks.Table(relational_data, ref_dict)

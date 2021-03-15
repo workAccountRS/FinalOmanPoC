@@ -9,18 +9,21 @@ class Preprocess:
 
     # THIS FUNCTION WILL RETURN ORG_DF+PREPROC_DF HAVING PREPROCESSED TEXT FOR ALL COLUMNS
     # PREPROCESSED COLUMNS ARE DEFINED BY APPENDING '_P' TO ORIGINAL NAME
-    def initialPrep(self,df):
-        df_P = df.dropna(how='all') # drop rows having all None values
+    def initialPrep(self, df):
+        df_P = df.dropna(how='all')  # drop rows having all None values
         df_P = df_P.apply(lambda x: None if x is 'None' else x.astype(str).str.strip())  # Strip L and R space
         df_P = df_P.apply(lambda x: None if x is 'None' else x.astype(str).str.lower())  # lower case
-        df_P = df_P.apply(lambda x: None if x is 'None' else x.astype(str).str.replace("\s\s+", " "))  # Make whitespace into one space
-        df_P = df_P.apply(lambda x: None if x is 'None' else x.astype(str).str.replace('[ًٌٍَُِّْٰٓ]+', ""))  # Remove تشكيل
-        df_P = df_P.apply(lambda x:  None if x is 'None' else x.astype(str).str.replace('[أآإ]+', 'ا'))  # Remove arabic special char
+        df_P = df_P.apply(lambda x: None if x is 'None' else x.astype(str).str.replace("\s\s+",
+                                                                                       " "))  # Make whitespace into one space
+        df_P = df_P.apply(
+            lambda x: None if x is 'None' else x.astype(str).str.replace('[ًٌٍَُِّْٰٓ]+', ""))  # Remove تشكيل
+        df_P = df_P.apply(
+            lambda x: None if x is 'None' else x.astype(str).str.replace('[أآإ]+', 'ا'))  # Remove arabic special char
         df_P.columns = [str(col) + '_P' for col in df_P.columns]  # Append _P to preprocessed columns
         df_P = df_P.replace({'none': None})
-        df_out = pd.concat([df, df_P], axis=1) # Join original columns to preprocessed columns
+        df_out = pd.concat([df, df_P], axis=1)  # Join original columns to preprocessed columns
         try:
-            df_out = df_out.drop(['TIME_STAMP_P','BATCH_ID_P'],axis=1)
+            df_out = df_out.drop(['TIME_STAMP_P', 'BATCH_ID_P'], axis=1)
         except:
             pass
         return df_out
@@ -62,7 +65,6 @@ class Preprocess:
 
         pattern = '|'.join([*month_dict.keys()]) + '|'.join(set(month_dict.values()))
         allmonths = [None if str(i).__contains__('-') else self.matchPattern(i, pattern) for i in column]
-        print(allmonths)
 
         output = []
         for i in allmonths:
@@ -70,7 +72,7 @@ class Preprocess:
                 output.append(month_dict[i])
             else:
                 output.append(i)
-        print(output)
+        print('getmonth',output)
         return output
 
     def getYear(self, column):
@@ -81,25 +83,49 @@ class Preprocess:
                 y = extractYear.group(0)
                 output.append(int(y))
             except:
-                    output.append(None)
-        print(output)
+                output.append(None)
+        print('getyear',output)
         return output
 
-    def getDate(self, month_list=None, year_list=[]):
-        if month_list is not None:
-            date = []
-            for i in range(len(month_list)):
-                if pd.isna(year_list[i]):
+    # def getDate(self, table, month_list=None, year_list=[]):
+    #     if month_list is not None:
+    #         date = []
+    #         for i in range(len(month_list)):
+    #             if pd.isna(year_list[i]):
+    #                 date.append(None)
+    #             elif pd.isna(month_list[i]):
+    #                 if table['FREQUENCY_P'][i].__contains__('month'):
+    #                     date.append(None)
+    #                 else:
+    #                     date.append(str(year_list[i]))
+    #             else:
+    #                 date.append(month_list[i] + '-' + str(year_list[i]))
+    #         output = pd.to_datetime(date, errors='coerce')
+    #
+    #     else:
+    #         output = pd.to_datetime(year_list, format='%Y', errors='coerce')
+    #     print(output)
+    #     return output
+
+    def getDate(self, table, month_title, year_title):
+        month_list = self.getMonth(table[month_title])
+        year_list = self.getYear(table[year_title])
+        freq = table['FREQUENCY_P'].tolist()
+        date = []
+
+        for i in range(len(month_list)):
+            if pd.isna(year_list[i]):
+                date.append(None)
+            elif freq[i].__contains__('month'):
+                if pd.isna(month_list[i]):
                     date.append(None)
-                elif pd.isna(month_list[i]):
-                    date.append(str(year_list[i]))
                 else:
                     date.append(month_list[i] + '-' + str(year_list[i]))
-            output = pd.to_datetime(date, errors='coerce')
+            else:
+                date.append(str(year_list[i]))
 
-        else:
-            output = pd.to_datetime(year_list, format='%Y', errors='coerce')
-        print(output)
+        output = pd.to_datetime(date, errors='coerce')
+        print('date output',output)
         return output
 
     def getNumeric(self, column):
@@ -127,24 +153,33 @@ class Preprocess:
 
         # convert obs_value_p to numeric values
         df['OBS_VALUE_P'] = pd.to_numeric(self.getNumeric(df['OBS_VALUE_P']))
-        print(df['OBS_VALUE_P'])
 
         # get TIME_PERIOD_DATE_P based on TIME_PERIOD_Y_P and TIME_PERIOD_Y_P
-        if freq_val == 1:
-            df = df.assign(TIME_PERIOD_DATE_P=self.getDate(year_list=self.getYear(df['TIME_PERIOD_Y_P'])))
-            df['TIME_PERIOD_Y_P'] = self.getYear(df['TIME_PERIOD_Y_P'])
-        else:
-            df['TIME_PERIOD_M_P'] = self.getMonth(df['TIME_PERIOD_M_P'])
-            df = df.assign(TIME_PERIOD_DATE_P=self.getDate(df['TIME_PERIOD_M_P'], self.getYear(df['TIME_PERIOD_Y_P'])))
-            df['TIME_PERIOD_Y_P'] = self.getYear(df['TIME_PERIOD_Y_P'])
+        df['TIME_PERIOD_M_P'] = self.getMonth(df['TIME_PERIOD_M_P'])
+        df = df.assign(TIME_PERIOD_DATE_P=self.getDate(df, 'TIME_PERIOD_M_P', 'TIME_PERIOD_Y_P'))
+        df['TIME_PERIOD_Y_P'] = self.getYear(df['TIME_PERIOD_Y_P'])
 
         # get PUBLICATION_DATE_AR_P and PUBLICATION_DATE_EN_P
         df = df.assign(PUBLICATION_DATE_AR_P=
-                             self.getDate(self.getMonth(df['PUBLICATION_DATE_AR_P']),
-                                          self.getYear(df['PUBLICATION_DATE_AR_P'])))
+                       self.getDate(df, 'PUBLICATION_DATE_AR_P', 'PUBLICATION_DATE_AR_P'))
         df = df.assign(PUBLICATION_DATE_EN_P=
-                             self.getDate(self.getMonth(df['PUBLICATION_DATE_EN_P']),
-                                          self.getYear(df['PUBLICATION_DATE_EN_P'])))
+                       self.getDate(df, 'PUBLICATION_DATE_EN_P', 'PUBLICATION_DATE_EN_P'))
+
+        # if freq_val == 1:
+        #     df = df.assign(TIME_PERIOD_DATE_P=self.getDate(year_list=self.getYear(df['TIME_PERIOD_Y_P'])))
+        #     df['TIME_PERIOD_Y_P'] = self.getYear(df['TIME_PERIOD_Y_P'])
+        # else:
+        #     df['TIME_PERIOD_M_P'] = self.getMonth(df['TIME_PERIOD_M_P'])
+        #     df = df.assign(TIME_PERIOD_DATE_P=self.getDate(df, df['TIME_PERIOD_M_P'], self.getYear(df['TIME_PERIOD_Y_P'])))
+        #     df['TIME_PERIOD_Y_P'] = self.getYear(df['TIME_PERIOD_Y_P'])
+
+        # get PUBLICATION_DATE_AR_P and PUBLICATION_DATE_EN_P
+        # df = df.assign(PUBLICATION_DATE_AR_P=
+        #                      self.getDate(df, self.getMonth(df['PUBLICATION_DATE_AR_P']),
+        #                                   self.getYear(df['PUBLICATION_DATE_AR_P'])))
+        # df = df.assign(PUBLICATION_DATE_EN_P=
+        #                      self.getDate(df, self.getMonth(df['PUBLICATION_DATE_EN_P']),
+        #                                   self.getYear(df['PUBLICATION_DATE_EN_P'])))
         return df
 
     def getPredDiscrepancies(self, curr_table, old_table):
@@ -152,9 +187,7 @@ class Preprocess:
             PredDisc = pd.DataFrame({'MESSAGE': ['No previously inserted data for this table']})
         else:
             columns_P = [i for i in old_table.columns if i.upper().endswith('_P')]
-            print(columns_P)
             columns_output = [i for i in old_table.columns if not i.upper().endswith('_P')]
-            print(columns_output)
 
             newYears = curr_table['TIME_PERIOD_Y_P'].unique().tolist()
             oldYears = old_table['TIME_PERIOD_Y_P'].unique().tolist()
@@ -167,10 +200,10 @@ class Preprocess:
             joint_table = df_cur.append(df_old, ignore_index=True)
 
             for i in columns_P:
-                print('column',i)
+                print('column', i)
                 PredDisc = joint_table.drop_duplicates(subset=i, keep=False)
                 print(PredDisc[i])
-                #PredDisc = PredDisc[columns_output]
+                # PredDisc = PredDisc[columns_output]
 
             if PredDisc.empty:
                 PredDisc = pd.DataFrame({'MESSAGE': ['No predecessor discrepancies']})
