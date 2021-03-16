@@ -4,11 +4,6 @@ import cx_Oracle
 import config
 
 
-
-# TODO: INSERT NULL
-# TODO: DYNAMIC
-# TODO GET TABLE
-
 class DB:
     connection = None
 

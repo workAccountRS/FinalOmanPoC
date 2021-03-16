@@ -6,7 +6,7 @@ import ExcelToPDF
 import FilesHandling
 
 tamara = False
-SavePDF = False
+SavePDF = True
 
 start_time = time.time()
 
@@ -14,7 +14,7 @@ for InputFileName in FilesHandling.getListOfFiles():
     if str(InputFileName).__contains__("~"):  # TO SKIP TEMP EXCEL FILES (Opened Files)
         continue
 
-    current_time = time.time() # TO CALCULATE EXECUTION TIME
+    current_time = time.time()  # TO CALCULATE EXECUTION TIME
 
     excelHandler = ExcelHandler(fileName=InputFileName)
 
@@ -25,8 +25,6 @@ for InputFileName in FilesHandling.getListOfFiles():
 
     db = DB(landing_db='landing_db' + tablePostFix, relational_db='relational_db' + tablePostFix,
             s2t_mapping='s2t_mapping' + tablePostFix, ref_dictionary='ref_dictionary' + tablePostFix)
-
-
 
     # COLUMNS TO CREATE DYNAMIC TABLES
     s2tColumns = excelHandler.getRowDataFromSheet(sheet='S2T Mapping', row=1)
@@ -85,40 +83,27 @@ for InputFileName in FilesHandling.getListOfFiles():
         source_data = excelHandler.getCellFromSheet(sheet=str(sheet_source), cell=cell_source)
         target_data = excelHandler.getCellFromSheet(sheet=str(sheet_target), cell=cell_target)
 
+        # PRINT EACH ROW
         # print("============= ROW NUMBER: ", rowNumber)
         # print("SOURCE DATA: ", source_data)
         # print("============================")
 
-        # TASK 2 FILL THE LANDING DB:
-        # Sheet_Source | Cell_Source | Cell_Content	| Time_Stamp | Batch_ID
-
-        # WRITING ON A EXCEL FILE (Write Test)
-        if True:
+        try:
             # WRITE FROM SOURCE TO TARGET
             excelHandler.writeCell(sheet='Target Table', cell=str(cell_target), value=source_data)
 
-            # WRITE TO LANDING DB
-            # GET MAX COLUMN
-
-            # LOOP FROM A TO LAST COL
             excelHandler.writeCell(sheet='Landing DB', cell=str('A' + str(lastRow)), value=sheet_source)
             excelHandler.writeCell(sheet='Landing DB', cell=str('B' + str(lastRow)), value=cell_source)
             excelHandler.writeCell(sheet='Landing DB', cell=str('C' + str(lastRow)), value=source_data)
             excelHandler.writeCell(sheet='Landing DB', cell=str('D' + str(lastRow)), value=currentTime)
             excelHandler.writeCell(sheet='Landing DB', cell=str('E' + str(lastRow)), value=str(BatchID))
 
-            # db.insertIntoLandingDB(sheetSource=sheet_source, cellSource=cell_source, cellContent=source_data,
-            #                        TimeStamp=currentTime, BatchID=BatchID)
-
-            # db.insertDynamicTable(tableName=db.landing_db, columns=landingDBColumns,
-            #                       values=[sheet_source, cell_source, source_data, currentTime, str(BatchID)])
-
             listOfTuplesLanding.append(
                 tuple([str(sheet_source), str(cell_source), str(source_data), str(currentTime), str(BatchID)]))
-
-        # except Exception as e:
-        #     print("ERROR IN ROW#" + str(rowNumber) + " -- " + str(e))
-        #     errors.append(['ROW NUMBER:' + str(rowNumber), 'CELL SOURCE:' + cell_source, 'CELL TARGET:' + cell_target , 'ERROR: ' + str(e)]  )
+        except Exception as e:
+            print("ERROR IN ROW#" + str(rowNumber) + " -- " + str(e))
+            errors.append(['ROW NUMBER:' + str(rowNumber), 'CELL SOURCE:' + cell_source, 'CELL TARGET:' + cell_target,
+                           'ERROR: ' + str(e)])
 
         # NEXT ROW TO WRITE
         lastRow += 1
@@ -126,21 +111,21 @@ for InputFileName in FilesHandling.getListOfFiles():
     for rowNumber in range(4, excelHandler.getMaxRow(sheet='Relational DB') + 1):
         # TIME AND BATCH ID
 
-        currentTimeCell , BatchIDCell  = excelHandler.getCellCoordinate(sheet='Relational DB')
+        currentTimeCell, BatchIDCell = excelHandler.getCellCoordinate(sheet='Relational DB')
         if currentTimeCell and BatchIDCell:
-            excelHandler.writeCell(sheet='Relational DB', cell=str(str(currentTimeCell) + str(rowNumber)), value=currentTime)
-            excelHandler.writeCell(sheet='Relational DB', cell=str(str(BatchIDCell) + str(rowNumber)), value=str(BatchID))
+            excelHandler.writeCell(sheet='Relational DB', cell=str(str(currentTimeCell) + str(rowNumber)),
+                                   value=currentTime)
+            excelHandler.writeCell(sheet='Relational DB', cell=str(str(BatchIDCell) + str(rowNumber)),
+                                   value=str(BatchID))
 
         currentRowData = excelHandler.getRowDataFromSheet(sheet='Relational DB', row=rowNumber)
         currentRowData = ['' if i is None else str(i) for i in currentRowData]
         currentRowData.append(timeCount)
-        # db.insertDynamicTable(tableName=db.relational_db, columns=relationalColumns, values=currentRowData)
         listOfTuplesRelational.append(tuple(currentRowData))
 
     if isFirstRun:
         for rowNumber in range(2, excelHandler.getMaxRow(sheet='Ref_Dictionary') + 1):
             currentRowData = excelHandler.getRowDataFromSheet(sheet='Ref_Dictionary', row=rowNumber)
-            # db.insertDynamicTable(tableName=db.ref_dictionary, columns=refDictionaryColumns, values=currentRowData)
             listOfTuplesRef.append(tuple(currentRowData))
 
     excelHandler.saveSpreadSheet(fileName=InputFileName)
@@ -148,13 +133,6 @@ for InputFileName in FilesHandling.getListOfFiles():
     if SavePDF:
         pdfFileName = excelHandler.getCellFromSheet(sheet='Cover page', cell='B5')
         ExcelToPDF.excelToPDF(pdfFileName=pdfFileName, fileName=InputFileName, sheetsListToConvert=sheetsToPdfList)
-
-    # db.printDescription()
-    # db.printLandingDB()
-    # db.printS2t()
-    # db.printRelationalDB()
-
-    # ========================== RESULTS
 
     print("ERRORS IN ROWS: ", errors)
     print("SKIPPED ROWS: ", skippedRows)
@@ -210,7 +188,8 @@ for InputFileName in FilesHandling.getListOfFiles():
             relational_data = prep.prepDatesAndValues(df_curr)
             reports = Reports(relational_data)
             print(relational_data[
-                      ['OBS_VALUE_P', 'PUBLICATION_DATE_EN_P', 'PUBLICATION_DATE_AR_P', 'TIME_PERIOD_DATE_P']].to_string())
+                      ['OBS_VALUE_P', 'PUBLICATION_DATE_EN_P', 'PUBLICATION_DATE_AR_P',
+                       'TIME_PERIOD_DATE_P']].to_string())
 
             # GET GOOD AND BAD ROWS AND OUTPUT TO EXCEL
             print('____________________________pass fail____________________________')
