@@ -131,9 +131,15 @@ class Reports:
             else:
                 continue
 
+        # design output
+        measureDict = self.table[['MEASURE_ID_P','MEASURE_NAME_AR','MEASURE_NAME_EN','UNIT_AR','UNIT_EN']].drop_duplicates()
+        measure_col =[*measureDict.columns]
+        measure_col.remove('MEASURE_ID_P')
+        diff = diff.merge(measureDict, how='left')
+
         order_list = [self.date,'MEASURE_ID_P']
         diff = diff.sort_values(by=order_list).reset_index(drop=True)
-        diff_out = diff[self.lookups + self.time_period + [self.values,'MEASURE_ID_P','FREQUENCY','DIFFERENCE','PERCENT_DIFFERENCE']]
+        diff_out = diff[self.lookups + self.time_period + measure_col + [self.values,'FREQUENCY','DIFFERENCE','PERCENT_DIFFERENCE']]
         freq = diff.sort_values(by=self.date).drop_duplicates(subset=[self.date,'FREQUENCY'])
         freq = freq[self.time_period+['FREQUENCY']]
 
@@ -180,7 +186,14 @@ class Reports:
         actual_totals = actual_totals.drop_duplicates()
         totals = actual_totals.merge(full_table,on=on, how='left', suffixes=('_L', '_R'))
         totals['CALCULATED - TOTALS'] = totals['OBS_VALUE_P_L'] - totals['OBS_VALUE_P_R']
-        out_cols = self.lookups + self.time_period + ['OBS_VALUE_P_L','OBS_VALUE_P_R','CALCULATED - TOTALS']
+        totals['CALCULATED - TOTALS'] = totals['CALCULATED - TOTALS'].round(0)
+
+        # design output
+        measureDict = self.table[['MEASURE_ID_P','MEASURE_NAME_AR','MEASURE_NAME_EN','UNIT_AR','UNIT_EN']].drop_duplicates()
+        measure_col =[*measureDict.columns]
+        measure_col.remove('MEASURE_ID_P')
+        totals = totals.merge(measureDict, how='left')
+        out_cols = self.lookups + self.time_period + measure_col + ['OBS_VALUE_P_L','OBS_VALUE_P_R','CALCULATED - TOTALS']
         totals = totals[out_cols]
         totals = totals.rename(columns={'OBS_VALUE_P_L': 'CALCULATED TOTALS', 'OBS_VALUE_P_R': 'REPORTED TOTALS'}, inplace = False)
 

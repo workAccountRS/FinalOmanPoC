@@ -23,7 +23,7 @@ class Preprocess:
         df_P = df_P.replace({'none': None})
         df_out = pd.concat([df, df_P], axis=1)  # Join original columns to preprocessed columns
         try:
-            df_out = df_out.drop(['TIME_STAMP_P', 'BATCH_ID_P'], axis=1)
+            df_out = df_out.drop(['TIME_STAMP_P', 'BATCH_ID_P','SERIAL_DATA_LOAD_P'], axis=1)
         except:
             pass
         return df_out
@@ -158,6 +158,7 @@ class Preprocess:
         return df
 
     def getPredDiscrepancies(self, curr_table, old_table):
+
         if old_table.empty:
             PredDisc = pd.DataFrame({'MESSAGE': ['No previously inserted data for this table']})
         else:
@@ -182,6 +183,7 @@ class Preprocess:
                 # PredDisc = PredDisc[columns_output]
 
             PredDisc = joint_table.drop_duplicates(subset=columns_P, keep=False)
+            PredDisc = PredDisc[columns_output]
 
             if PredDisc.empty:
                 PredDisc = pd.DataFrame({'MESSAGE': ['No predecessor discrepancies']})
