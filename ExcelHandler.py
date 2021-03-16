@@ -11,10 +11,10 @@ class ExcelHandler:
         # TO EXPORT DATA FROM DATA FRAME TO EXCEL OUTPUT
         self.writer = pd.ExcelWriter(fileName, engine='openpyxl')  # TO WRITE FROM DATAFRAME SOURCE TO EXCEL OUTPUT
         self.writer.book = self.wb
-        self.writer.sheets = {ws.title: ws for ws in self.wb.worksheets} # CREATE A DICTIONARY OF EXCEL SHEETS
+        self.writer.sheets = {ws.title: ws for ws in self.wb.worksheets}  # CREATE A DICTIONARY OF EXCEL SHEETS
 
     # RETURNS ALL CELLS IN A GIVEN COLUMN
-    def getColumnDataFromSheet(self, sheet="S2T Mapping", column=1):
+    def getEntireColumnFromSheet(self, sheet="S2T Mapping", column=1):
         sheet = self.wb[sheet]
         columnData = []
         for i in range(1, sheet.max_row + 1):
@@ -22,27 +22,23 @@ class ExcelHandler:
         return columnData
 
     # RETURNS ALL CELLS IN A GIVEN ROW
-    def getRowDataFromSheet(self, sheet="S2T Mapping", row=1):
+    def getEntireRowFromSheet(self, sheet="S2T Mapping", row=1):
         sheet = self.wb[sheet]
         rowData = []
         letters = [chr(i) for i in range(ord('A'), ord('Z') + 1)]
-        letters.extend(['AA' , 'AB'  , 'AC'  , 'AD'  , 'AE'  , 'AF'  , 'AG'  , 'AH'])
+        letters.extend(['AA', 'AB', 'AC', 'AD', 'AE', 'AF', 'AG', 'AH'])
         for i in range(0, sheet.max_column):
             rowData.append(sheet['{0}{1}'.format(letters[i], row)].value)
         return rowData
 
-    def getCellCoordinate(self, sheet="S2T Mapping", row=1):
+    def getCellCoordinates(self, sheet='', cellName=''):
         sheet = self.wb[sheet]
-        timeStampCell = None
-        batchIdCell = None
+        result = None
         for index, row in enumerate(sheet.iter_rows()):
             for cell in row:
-                if cell.value == 'Time_Stamp':
-                    timeStampCell = cell.coordinate[:-1]
-                if cell.value == 'Batch_ID':
-                    batchIdCell = cell.coordinate[:-1]
-
-        return timeStampCell, batchIdCell
+                if cell.value == cellName:
+                    result = cell.coordinate
+        return result
 
     def getCellFromSheet(self, sheet="S2T Mapping", cell="A1"):
         sheet = self.wb[sheet]
@@ -67,7 +63,8 @@ class ExcelHandler:
         self.wb.save(filename=fileName)
 
     def saveDFtoExcel(self, sheet_name, data_frame):
-        data_frame.to_excel(self.writer, sheet_name=sheet_name, startrow=self.writer.sheets[sheet_name].max_row, index=False)
+        data_frame.to_excel(self.writer, sheet_name=sheet_name, startrow=self.writer.sheets[sheet_name].max_row,
+                            index=False)
 
     def closeWriter(self):
         self.writer.save()
@@ -94,7 +91,7 @@ class ExcelHandler:
     def sheetsAliveList(self, sheetNames):
         aliveList = []
         for sheetName in sheetNames:
-           if self.isSheetAlive(sheetName):
-               aliveList.append(sheetName)
+            if self.isSheetAlive(sheetName):
+                aliveList.append(sheetName)
 
         return aliveList
