@@ -28,15 +28,17 @@ class Reports:
 
     def CLCoverage(self, ref_dict):
         prepCLs = [i for i in self.lookups if i.endswith('_P')]
+        print(prepCLs)
         lookupDF = self.table[prepCLs]
+        print(lookupDF)
 
         missing = {'Missing CL_ID':[],'Missing Description':[]}
         for i in prepCLs:
             dist_list = lookupDF[i].dropna().unique()
             lookup_list = ref_dict[ref_dict['CL_ID_P']==i[:-2].lower()]['DESCRIPTION_P'].tolist()
 
-            for j in dist_list:
-                if j not in lookup_list:
+            for j in lookup_list:
+                if j not in dist_list:
                     missing['Missing CL_ID'].append(i)
                     missing['Missing Description'].append(j)
 

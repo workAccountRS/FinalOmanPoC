@@ -32,7 +32,7 @@ class Table:
                         output['invalid input'].append(item[:-2])
 
             elif item.upper() == 'TIME_PERIOD_M_P':
-                if input['FREQUENCY_P'].__contains__('month'):
+                if str(input['FREQUENCY_P']).__contains__('month'):
                     if pd.isna(input[item]):
                         if pd.isna(input[item[:-2]]):
                             output['isnull'].append(item[:-2])
@@ -59,18 +59,17 @@ class Table:
                     if not rules.data_type(input[item], dataType):
                         output['wrong type'].append(item[:-2])
 
-                    if item.upper().__contains__('CL'):
-                        if str(item).upper() in [*lookups['CL_ID']]:
-                            if not rules.check_dict(input[item], item, lookups):
-                                output['out of range lookup'].append(item[:-2])
+                    if str(item).upper().__contains__('CL'):
+                        if not rules.check_dict(input[item], item, lookups):
+                            output['out of range lookup'].append(item[:-2])
 
                     elif str(item).upper().__contains__('EN'):
                         if not rules.lang(input[item], 'en'):
                             output['wrong language'].append(item[:-2])
 
                     elif str(item).upper().__contains__('AR'):
-                        if not item.upper().__contains__('DATE'):
-                            if input[item].__contains__('na'):
+                        if not str(item).upper().__contains__('DATE'):
+                            if str(input[item]).__contains__('na'):
                                 continue
                             else:
                                 if not rules.lang(input[item], 'ar'):

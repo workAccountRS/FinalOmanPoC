@@ -5,7 +5,7 @@ from DataBase import DB
 import ExcelToPDF
 import FilesHandling
 
-tamara = False
+tamara = True
 SavePDF = True
 
 start_time = time.time()
@@ -170,7 +170,6 @@ for InputFileName in FilesHandling.getListOfFiles():
         excelHandlerForOutput = ExcelHandler(fileName=outputFile)
 
         try:
-
             # GET TABLES FROM DB INTO PANDAS DATAFRAME
             df_curr, df_old = db.relationalDF(selctedTable=db.relational_db, time_stamp=currentTime)
             ref_dict = db.getTableToDF(selctedTable=db.ref_dictionary)

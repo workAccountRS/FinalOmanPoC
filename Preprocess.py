@@ -104,7 +104,7 @@ class Preprocess:
                 date.append(None)
 
             # frequency is relevant to time series
-            elif freq[i].__contains__('month') and isDate == 0:
+            elif str(freq[i]).__contains__('month') and isDate == 0:
                 if pd.isna(month_list[i]):
                     date.append(None)
                 else:
@@ -139,10 +139,6 @@ class Preprocess:
 
     def prepDatesAndValues(self, df):
 
-        # freq_val = 1 if yearly otherwise 0
-        freq_val = df['FREQUENCY'][df.FREQUENCY.first_valid_index()].upper()
-        freq_val = 1 if freq_val.__contains__('YEAR') or freq_val.__contains__('ANNUAL') else 0
-
         # convert obs_value_p to numeric values
         df['OBS_VALUE_P'] = pd.to_numeric(self.getNumeric(df['OBS_VALUE_P']))
 
@@ -154,7 +150,7 @@ class Preprocess:
         # get PUBLICATION_DATE_AR_P and PUBLICATION_DATE_EN_P
         df = df.assign(PUBLICATION_DATE_AR_P=
                        self.getDate(df, 'PUBLICATION_DATE_AR_P', 'PUBLICATION_DATE_AR_P'))
-        df = df.assign(PUBLICATION_DATE_EN_P=pd.to_datetime(df['PUBLICATION_DATE_EN_P']))
+        df = df.assign(PUBLICATION_DATE_EN_P=pd.to_datetime(df['PUBLICATION_DATE_EN_P'],errors='coerce'))
         return df
 
     def getPredDiscrepancies(self, curr_table, old_table):
