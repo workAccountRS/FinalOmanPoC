@@ -27,11 +27,11 @@ for InputFileName in FilesHandling.getListOfFiles():
             s2t_mapping='s2t_mapping' + tablePostFix, ref_dictionary='ref_dictionary' + tablePostFix)
 
     # COLUMNS TO CREATE DYNAMIC TABLES
-    s2tColumns = excelHandler.getRowDataFromSheet(sheet='S2T Mapping', row=1)
-    relationalColumns = excelHandler.getRowDataFromSheet(sheet='Relational DB', row=2)
+    s2tColumns = excelHandler.getEntireRowFromSheet(sheet='S2T Mapping', row=1)
+    relationalColumns = excelHandler.getEntireRowFromSheet(sheet='Relational DB', row=2)
     relationalColumns.append('Serial_Data_Load')
-    refDictionaryColumns = excelHandler.getRowDataFromSheet(sheet='Ref_Dictionary', row=1)
-    landingDBColumns = excelHandler.getRowDataFromSheet(sheet='Landing DB', row=1)
+    refDictionaryColumns = excelHandler.getEntireRowFromSheet(sheet='Ref_Dictionary', row=1)
+    landingDBColumns = excelHandler.getEntireRowFromSheet(sheet='Landing DB', row=1)
 
     isNewTable = db.createDynamicTable(tableName=db.s2t_mapping, columns=s2tColumns)
 
@@ -60,7 +60,7 @@ for InputFileName in FilesHandling.getListOfFiles():
 
     # LOOP THROUGH THE MAP
     for rowNumber in range(2, excelHandler.getMaxRow(sheet='S2T Mapping') + 1):
-        currentRowData = excelHandler.getRowDataFromSheet(sheet='S2T Mapping', row=rowNumber)
+        currentRowData = excelHandler.getEntireRowFromSheet(sheet='S2T Mapping', row=rowNumber)
         sheet_source = currentRowData[0]
         cell_source = currentRowData[1]
         sheet_target = currentRowData[2]
@@ -108,24 +108,28 @@ for InputFileName in FilesHandling.getListOfFiles():
         # NEXT ROW TO WRITE
         lastRow += 1
 
+    currentTimeCell = excelHandler.getCellCoordinates(sheet='Relational DB',
+                                                      cellName='Time_Stamp')  # THIS WILL GET THE EXACT CELL, SO INSTEAD I TOOK ONLY THE COLUMN WITHOUT THE ROW
+    BatchIDCell = excelHandler.getCellCoordinates(sheet='Relational DB',
+                                                  cellName='Batch_ID')  # THIS WILL GET THE EXACT CELL, SO INSTEAD I TOOK ONLY THE COLUMN WITHOUT THE ROW
+
     for rowNumber in range(4, excelHandler.getMaxRow(sheet='Relational DB') + 1):
-        # TIME AND BATCH ID
 
-        currentTimeCell, BatchIDCell = excelHandler.getCellCoordinate(sheet='Relational DB')
+
         if currentTimeCell and BatchIDCell:
-            excelHandler.writeCell(sheet='Relational DB', cell=str(str(currentTimeCell) + str(rowNumber)),
-                                   value=currentTime)
-            excelHandler.writeCell(sheet='Relational DB', cell=str(str(BatchIDCell) + str(rowNumber)),
-                                   value=str(BatchID))
+            excelHandler.writeCell(sheet='Relational DB', cell=str(currentTimeCell[:-1])  +str(rowNumber), value=currentTime)
+            excelHandler.writeCell(sheet='Relational DB', cell=str(BatchIDCell[:-1]) + str(rowNumber), value=str(BatchID))
+        else:
+            print('CELL NOT FOUND')
 
-        currentRowData = excelHandler.getRowDataFromSheet(sheet='Relational DB', row=rowNumber)
+        currentRowData = excelHandler.getEntireRowFromSheet(sheet='Relational DB', row=rowNumber)
         currentRowData = ['' if i is None else str(i) for i in currentRowData]
         currentRowData.append(timeCount)
         listOfTuplesRelational.append(tuple(currentRowData))
 
     if isFirstRun:
         for rowNumber in range(2, excelHandler.getMaxRow(sheet='Ref_Dictionary') + 1):
-            currentRowData = excelHandler.getRowDataFromSheet(sheet='Ref_Dictionary', row=rowNumber)
+            currentRowData = excelHandler.getEntireRowFromSheet(sheet='Ref_Dictionary', row=rowNumber)
             listOfTuplesRef.append(tuple(currentRowData))
 
     excelHandler.saveSpreadSheet(fileName=InputFileName)
