@@ -3,9 +3,7 @@ import os
 from datetime import datetime
 from random import randint
 
-
-def excelToPDF(pdfFileName='', fileName='', sheetsListToConvert=['Target Table', 'dsf' , 'Target Graph', 'Target PT', 'Text']):
-    #  [4, 6, 7, 8, 9]
+def excelToPDF(pdfFileName='', fileName='', sheetsListToConvert=['Target Table']):
     try:
         o = win32com.client.Dispatch("Excel.Application")
 
@@ -17,16 +15,16 @@ def excelToPDF(pdfFileName='', fileName='', sheetsListToConvert=['Target Table',
 
         ws_index_list = sheetsListToConvert
 
-        print('===========================SAVING PDF')
+        print('===========================SAVING PDF - [{0}]'.format(ws_index_list))
         for item in ws_index_list:
-            path_to_pdf = directory + '/{0}_{1}.pdf'.format(item, pdfFileName)
+            pdfName = '/{0}_{1}.pdf'.format(item, pdfFileName)
+            path_to_pdf = directory + pdfName
             try:
                 if type(item) == type(''):
                     wb.sheets(item).Select()
                 elif type(item) == type(1):
                     wb.WorkSheets(item).Select()
                 wb.ActiveSheet.ExportAsFixedFormat(0, path_to_pdf)
-                print('SAVING: {0}'.format(path_to_pdf))
             except Exception as e:
                 print(e)
     except Exception as e:

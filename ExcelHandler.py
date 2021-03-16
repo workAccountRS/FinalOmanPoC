@@ -94,3 +94,17 @@ class ExcelHandler:
         sheet = wb['Sheet']
         wb.remove(sheet)
         wb.save(filename=filename)
+
+    def isSheetAlive(self, sheetName):
+        if str(sheetName) in self.wb.sheetnames:
+            return True
+        else:
+            return False
+
+    def sheetsAliveList(self, sheetNames):
+        aliveList = []
+        for sheetName in sheetNames:
+           if self.isSheetAlive(sheetName):
+               aliveList.append(sheetName)
+
+        return aliveList

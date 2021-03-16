@@ -1,25 +1,24 @@
-import glob
-import os
 from ExcelHandler import ExcelHandler
 import Utilities
 import time
 from DataBase import DB
 import ExcelToPDF
+import FilesHandling
 
-directory = os.path.abspath('.')
-path = directory + "\\Input\\*.xlsx"
-list_of_files = glob.glob(path)
-print(list_of_files)
-for file in list_of_files:
-    if str(file).__contains__("~"):  # TO SKIP TEMP EXCEL FILES (Opened Files)
+tamara = False
+SavePDF = False
+
+start_time = time.time()
+
+for InputFileName in FilesHandling.getListOfFiles():
+    if str(InputFileName).__contains__("~"):  # TO SKIP TEMP EXCEL FILES (Opened Files)
         continue
 
-    # TO CALCULATE EXECUTION TIME
-    start_time = time.time()
+    current_time = time.time() # TO CALCULATE EXECUTION TIME
 
-    # TASK 1 READ THE EXCEL FILE:
-    InputFileName = file
     excelHandler = ExcelHandler(fileName=InputFileName)
+
+    sheetsToPdfList = excelHandler.sheetsAliveList(['Target Table', 'Target Graph', 'Target PT', 'Text'])
     pdfFileName = excelHandler.getCellFromSheet(sheet='Cover page', cell='B5')
     freq = excelHandler.getCellFromSheet(sheet='Cover page', cell='B8').strip().lower()
     tablePostFix = '_{0}'.format(pdfFileName)
@@ -50,6 +49,8 @@ for file in list_of_files:
 
     BatchID = Utilities.getBatchID()
     currentTime = Utilities.getCurrentTime()
+
+    print("UNIQUE ID: ", str(BatchID), " DATE AND TIME =", currentTime)
 
     skippedRows = []
     errors = []
@@ -84,10 +85,9 @@ for file in list_of_files:
         source_data = excelHandler.getCellFromSheet(sheet=str(sheet_source), cell=cell_source)
         target_data = excelHandler.getCellFromSheet(sheet=str(sheet_target), cell=cell_target)
 
-        print("============= ROW NUMBER: ", rowNumber)
-        print("UNIQUE ID: ", str(BatchID), " DATE AND TIME =", currentTime)
-        print("SOURCE DATA: ", source_data)
-        print("============================")
+        # print("============= ROW NUMBER: ", rowNumber)
+        # print("SOURCE DATA: ", source_data)
+        # print("============================")
 
         # TASK 2 FILL THE LANDING DB:
         # Sheet_Source | Cell_Source | Cell_Content	| Time_Stamp | Batch_ID
@@ -145,8 +145,9 @@ for file in list_of_files:
 
     excelHandler.saveSpreadSheet(fileName=InputFileName)
 
-    pdfFileName = excelHandler.getCellFromSheet(sheet='Cover page', cell='B5')
-    ExcelToPDF.excelToPDF(pdfFileName=pdfFileName, fileName=InputFileName)
+    if SavePDF:
+        pdfFileName = excelHandler.getCellFromSheet(sheet='Cover page', cell='B5')
+        ExcelToPDF.excelToPDF(pdfFileName=pdfFileName, fileName=InputFileName, sheetsListToConvert=sheetsToPdfList)
 
     # db.printDescription()
     # db.printLandingDB()
@@ -166,91 +167,94 @@ for file in list_of_files:
     db.insertDynamicTableFast(db.relational_db, columns=relationalColumns, values=listOfTuplesRelational)
 
     # TO CALCULATE EXECUTION TIME
-    print("--- Took %s seconds to process ---" % (time.time() - start_time))
+    print("--- Took %s seconds to process {0}---".format(InputFileName) % (time.time() - current_time))
 
-    # ########################################################################################################################
+    if tamara:
+        # ########################################################################################################################
 
-    # TODO: IMPORTS FIRST
-    from Preprocess import Preprocess
-    from Reports import Reports
-    import tableChecks
+        # TODO: IMPORTS FIRST
+        from Preprocess import Preprocess
+        from Reports import Reports
+        import tableChecks
 
-    import pandas as pd
+        import pandas as pd
 
-    pd.set_option('display.max_columns', None)
-    pd.set_option('display.max_rows', 100)
+        pd.set_option('display.max_columns', None)
+        pd.set_option('display.max_rows', 100)
 
-    formattedTime = str(currentTime).replace('/', '-').replace(':', '').replace(' ', '_')
-    outputFile = 'Validation_{0}_{1}.xlsx'.format(pdfFileName, formattedTime)
-    excelHandler.creatWorkBook(outputFile)
-    excelHandlerForOutput = ExcelHandler(fileName=outputFile)
+        formattedTime = str(currentTime).replace('/', '-').replace(':', '').replace(' ', '_')
+        outputFile = 'Validation_{0}_{1}.xlsx'.format(pdfFileName, formattedTime)
+        excelHandler.creatWorkBook(outputFile)
+        excelHandlerForOutput = ExcelHandler(fileName=outputFile)
 
-    try:
+        try:
 
-        # GET TABLES FROM DB INTO PANDAS DATAFRAME
-        df_curr, df_old = db.relationalDF(selctedTable=db.relational_db, time_stamp=currentTime)
-        ref_dict = db.getTableToDF(selctedTable=db.ref_dictionary)
+            # GET TABLES FROM DB INTO PANDAS DATAFRAME
+            df_curr, df_old = db.relationalDF(selctedTable=db.relational_db, time_stamp=currentTime)
+            ref_dict = db.getTableToDF(selctedTable=db.ref_dictionary)
 
-        # PREPROCESS ALL DF (STRIP FROM EXTRA WHITE SPACE AND REMOVE ARABIC SPECIAL CHARACTERS)
-        print('____________________________INITAIL PREP____________________________')
-        prep = Preprocess()
-        df_curr = prep.initialPrep(df_curr)
-        df_old = prep.initialPrep(df_old)
-        ref_dict = prep.initialPrep(ref_dict)
+            # PREPROCESS ALL DF (STRIP FROM EXTRA WHITE SPACE AND REMOVE ARABIC SPECIAL CHARACTERS)
+            print('____________________________INITAIL PREP____________________________')
+            prep = Preprocess()
+            df_curr = prep.initialPrep(df_curr)
+            df_old = prep.initialPrep(df_old)
+            ref_dict = prep.initialPrep(ref_dict)
 
-        # PRED DISCREPANCIES CHECK
-        print('____________________________PredDisc____________________________')
-        PredDisc = prep.getPredDiscrepancies(df_curr, df_old)
-        excelHandlerForOutput.saveDFtoExcel('predecessor discrepancies', PredDisc)
+            # PRED DISCREPANCIES CHECK
+            print('____________________________PredDisc____________________________')
+            PredDisc = prep.getPredDiscrepancies(df_curr, df_old)
+            excelHandlerForOutput.saveDFtoExcel('predecessor discrepancies', PredDisc)
 
-        # PREP DATES AND NUMBER VALUES
-        print('____________________________date and obs prep____________________________')
-        relational_data = prep.prepDatesAndValues(df_curr)
-        reports = Reports(relational_data)
-        print(relational_data[
-                  ['OBS_VALUE_P', 'PUBLICATION_DATE_EN_P', 'PUBLICATION_DATE_AR_P', 'TIME_PERIOD_DATE_P']].to_string())
+            # PREP DATES AND NUMBER VALUES
+            print('____________________________date and obs prep____________________________')
+            relational_data = prep.prepDatesAndValues(df_curr)
+            reports = Reports(relational_data)
+            print(relational_data[
+                      ['OBS_VALUE_P', 'PUBLICATION_DATE_EN_P', 'PUBLICATION_DATE_AR_P', 'TIME_PERIOD_DATE_P']].to_string())
 
-        # GET GOOD AND BAD ROWS AND OUTPUT TO EXCEL
-        print('____________________________pass fail____________________________')
-        optionalColumns = ['NOTE1_AR_P', 'NOTE2_AR_P', 'NOTE3_AR_P', 'NOTE1_EN_P', 'NOTE2_EN_P', 'NOTE3_EN_P',
-                           'UNIT_EN_P', 'UNIT_AR_P', 'MULTIPLIER_EN_P', 'MULTIPLIER_AR_P']
+            # GET GOOD AND BAD ROWS AND OUTPUT TO EXCEL
+            print('____________________________pass fail____________________________')
+            optionalColumns = ['NOTE1_AR_P', 'NOTE2_AR_P', 'NOTE3_AR_P', 'NOTE1_EN_P', 'NOTE2_EN_P', 'NOTE3_EN_P',
+                               'UNIT_EN_P', 'UNIT_AR_P', 'MULTIPLIER_EN_P', 'MULTIPLIER_AR_P']
 
-        tableRules = tableChecks.Table(relational_data, ref_dict, optionalColumns)
-        df_pass, df_fail = tableRules.getPassFail()
-        excelHandlerForOutput.saveDFtoExcel('fail', df_fail)
-        excelHandlerForOutput.saveDFtoExcel('pass', df_pass)
-        print('rows passed', len(df_pass), 'out of', len(relational_data))
-        print('rows failed', len(df_fail), 'out of', len(relational_data))
+            tableRules = tableChecks.Table(relational_data, ref_dict, optionalColumns)
+            df_pass, df_fail = tableRules.getPassFail()
+            excelHandlerForOutput.saveDFtoExcel('fail', df_fail)
+            excelHandlerForOutput.saveDFtoExcel('pass', df_pass)
+            print('rows passed', len(df_pass), 'out of', len(relational_data))
+            print('rows failed', len(df_fail), 'out of', len(relational_data))
 
-        # GET MISSING LOOKUPS
-        print('____________________________missing CL____________________________')
-        missingCL = reports.CLCoverage(ref_dict)
-        excelHandlerForOutput.saveDFtoExcel('missing lookups', missingCL)
-        print('missingCL')
+            # GET MISSING LOOKUPS
+            print('____________________________missing CL____________________________')
+            missingCL = reports.CLCoverage(ref_dict)
+            excelHandlerForOutput.saveDFtoExcel('missing lookups', missingCL)
+            print('missingCL')
 
-        # GET MIN MAX
-        print('____________________________min max____________________________')
-        min_max = reports.minmax(ref_dict, freq)
-        excelHandlerForOutput.saveDFtoExcel('min_max', min_max)
+            # GET MIN MAX
+            print('____________________________min max____________________________')
+            min_max = reports.minmax(ref_dict, freq)
+            excelHandlerForOutput.saveDFtoExcel('min_max', min_max)
 
-        # GET DIFFERENCE AND PERCENTAGE DIFFERENCE
-        print('_______________________changes and frequency____________________________')
-        diff, freq = reports.changes(freq)
-        excelHandlerForOutput.saveDFtoExcel('frequency', freq)
-        excelHandlerForOutput.saveDFtoExcel('changes', diff)
+            # GET DIFFERENCE AND PERCENTAGE DIFFERENCE
+            print('_______________________changes and frequency____________________________')
+            diff, freq = reports.changes(freq)
+            excelHandlerForOutput.saveDFtoExcel('frequency', freq)
+            excelHandlerForOutput.saveDFtoExcel('changes', diff)
 
-        # GET TOTALS REPORT
-        print('____________________________Total____________________________')
-        total = reports.totals_new(ref_dict)
-        excelHandlerForOutput.saveDFtoExcel('total', total)
-        excelHandlerForOutput.closeWriter()
+            # GET TOTALS REPORT
+            print('____________________________Total____________________________')
+            total = reports.totals_new(ref_dict)
+            excelHandlerForOutput.saveDFtoExcel('total', total)
+            excelHandlerForOutput.closeWriter()
 
-        print("--- Took %s seconds to process ---" % (time.time() - start_time))
+            print("--- Took %s seconds to process ---" % (time.time() - start_time))
 
-    except Exception as e:
-        # TODO delete file
-        print('Reporting failed')
-        print(e)
-        excelHandlerForOutput.closeWriter()
+        except Exception as e:
+            # TODO delete file
+            print('Reporting failed')
+            print(e)
+            excelHandlerForOutput.closeWriter()
 
     db.closeConnection()
+
+    print("--- Took %s seconds to process all files---" % (time.time() - start_time))

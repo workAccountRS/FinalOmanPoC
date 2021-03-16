@@ -4,6 +4,7 @@ import cx_Oracle
 import config
 
 
+
 # TODO: INSERT NULL
 # TODO: DYNAMIC
 # TODO GET TABLE
@@ -95,7 +96,6 @@ class DB:
         sql = """
               CREATE TABLE EPUBLICATION.{0}
           ( {1}) """.format(tableName, columnsSQL)
-        print(':::::', sql)
         cursor = self.cursor
         try:
             cursor.execute(sql)
@@ -107,6 +107,7 @@ class DB:
                 print('TABLE NAME ALREADY EXISTS...')
                 return False
             else:
+                print(':::::', sql)
                 print(e)
                 return
 
@@ -126,11 +127,11 @@ class DB:
         valuesSQL = valuesSQL.replace("'NULL'", "NULL")
         sql = """INSERT INTO {0} ({1})
                 values ({2})""".format(tableName, columnsSQL, valuesSQL)
-        print(':::::', sql)
         cursor = self.cursor
         try:
             cursor.execute(sql)
         except Exception as e:
+            print(':::::', sql)
             print(e)
             return
 
@@ -149,11 +150,11 @@ class DB:
         valuesSQL = valuesSQL.replace("'NULL'", "NULL")
         sql = """INSERT INTO {0} ({1})
                 values ({2})""".format(tableName, columnsSQL, valuesSQL)
-        print(':::::', sql)
         cursor = self.cursor
         try:
             cursor.executemany(sql, values)
         except Exception as e:
+            print(':::::', sql)
             print(e)
             return
 
@@ -163,9 +164,11 @@ class DB:
         values ('{0}','{1}','{2}','{3}','{4}' )""".format(sheetSource, cellSource, cellContent,
                                                           TimeStamp, BatchID, self.landing_db)
 
-        print(':::::', sql)
-        cursor = self.cursor
-        cursor.execute(sql)
+        try:
+            cursor = self.cursor
+            cursor.execute(sql)
+        except:
+            print(':::::', sql)
 
     def printRelationalDB(self):
         db = cx_Oracle.connect('{0}/{1}@{2}:{3}/{4}'.format(config.username,
@@ -196,7 +199,6 @@ class DB:
     def getNumberOfRecords(self,tableName):
 
         sql = "SELECT * FROM {0}".format(tableName)
-        print(':::::', sql)
         cursor = self.cursor
         try:
             cursor.execute(sql)
@@ -205,6 +207,7 @@ class DB:
                 counter+=1
             return counter
         except Exception as e:
+            print(':::::', sql)
             print(e)
             return
 
